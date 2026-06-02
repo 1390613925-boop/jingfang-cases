@@ -1,0 +1,21 @@
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Dependency/build folders, kept ignored even though this project has no build step
+node_modules/
+dist/
+build/
+
+# Vercel local metadata
+.vercel/

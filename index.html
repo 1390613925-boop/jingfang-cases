@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>经方派医案展示</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <p class="eyebrow">经典方证 · 医案摘录</p>
+      <h1>经方派医案展示</h1>
+      <p class="intro">按病机、方证与辨治要点整理常见医案，便于检索、对照与学习。</p>
+      <div class="search-wrap">
+        <label for="caseSearch">搜索医案</label>
+        <input id="caseSearch" type="search" placeholder="输入病名、方剂、症状或关键词">
+      </div>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="summary-row" aria-label="医案概览">
+      <div>
+        <strong id="caseCount">0</strong>
+        <span>条医案</span>
+      </div>
+      <div>
+        <strong>方证对应</strong>
+        <span>辨证为先</span>
+      </div>
+      <div>
+        <strong>简明要点</strong>
+        <span>便于复盘</span>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>医案列表</h2>
+        <p id="resultHint">点击卡片查看完整辨治过程。</p>
+      </div>
+      <div id="caseGrid" class="case-grid" aria-live="polite"></div>
+      <p id="emptyState" class="empty-state" hidden>没有找到匹配的医案，换个关键词试试。</p>
+    </section>
+  </main>
+
+  <div id="caseModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <article class="modal-panel">
+      <button class="modal-close" type="button" aria-label="关闭详情" data-close-modal>&times;</button>
+      <p id="modalCategory" class="modal-category"></p>
+      <h2 id="modalTitle"></h2>
+      <div class="modal-meta">
+        <span id="modalFormula"></span>
+        <span id="modalPattern"></span>
+      </div>
+      <dl class="detail-list">
+        <div>
+          <dt>主诉</dt>
+          <dd id="modalComplaint"></dd>
+        </div>
+        <div>
+          <dt>辨证</dt>
+          <dd id="modalDiagnosis"></dd>
+        </div>
+        <div>
+          <dt>处方</dt>
+          <dd id="modalPrescription"></dd>
+        </div>
+        <div>
+          <dt>转归</dt>
+          <dd id="modalOutcome"></dd>
+        </div>
+      </dl>
+    </article>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
