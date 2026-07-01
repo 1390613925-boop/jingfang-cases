@@ -20,7 +20,7 @@ const modalFields = {
 
 async function loadCases() {
   try {
-    const response = await fetch("./data/data/cases.json");
+    const response = await fetch("./data/cases.json");
 
     if (!response.ok) {
       throw new Error("医案数据加载失败");
