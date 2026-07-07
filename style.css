@@ -316,6 +316,10 @@ h1 {
   line-height: 1.7;
 }
 
+.article-card {
+  min-height: 230px;
+}
+
 .card-footer {
   display: flex;
   align-items: center;
@@ -370,7 +374,7 @@ h1 {
 
 .modal-panel {
   position: relative;
-  width: min(780px, 100%);
+  width: min(920px, 100%);
   max-height: min(760px, calc(100vh - 48px));
   overflow: auto;
   border: 1px solid var(--line);
@@ -432,6 +436,16 @@ h1 {
   margin: 0;
   color: #3f4742;
   line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.article-body {
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+  padding-top: 18px;
+  color: #2f3833;
+  font-size: 15px;
+  line-height: 1.85;
   white-space: pre-wrap;
 }
 
