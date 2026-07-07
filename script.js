@@ -1,245 +1,226 @@
-const sources = [
-  {
-    key: "formulas",
-    label: "经典经方",
-    path: "./data/formulas.json",
-    grid: document.querySelector("#formulasGrid"),
-    count: document.querySelector("#formulaCount"),
-    hint: document.querySelector("#formulasHint"),
-    tagClass: ""
-  },
-  {
-    key: "cases",
-    label: "倪师医案",
-    path: "./data/cases.json",
-    grid: document.querySelector("#casesGrid"),
-    count: document.querySelector("#caseCount"),
-    hint: document.querySelector("#casesHint"),
-    tagClass: "type-case"
-  },
-  {
-    key: "experience",
-    label: "个人经验",
-    path: "./data/experience.json",
-    grid: document.querySelector("#experienceGrid"),
-    count: document.querySelector("#experienceCount"),
-    hint: document.querySelector("#experienceHint"),
-    tagClass: "type-experience"
-  }
-];
-
-const searchInput = document.querySelector("#siteSearch");
-const emptyState = document.querySelector("#emptyState");
-const modal = document.querySelector("#detailModal");
-
-const modalFields = {
-  category: document.querySelector("#modalCategory"),
-  title: document.querySelector("#modalTitle"),
-  tags: document.querySelector("#modalTags"),
-  details: document.querySelector("#modalDetails")
-};
-
-const state = {
+const datasets = {
   formulas: [],
-  cases: [],
-  experience: []
+  shanghan: [],
+  jingui: []
 };
 
-const detailLabels = {
-  title: "标题",
-  category: "分类",
+const filters = {
+  book: "全部",
+  category: "全部"
+};
+
+const els = {
+  search: document.querySelector("#siteSearch"),
+  empty: document.querySelector("#emptyState"),
+  formulasGrid: document.querySelector("#formulasGrid"),
+  shanghanGrid: document.querySelector("#shanghanGrid"),
+  jinguiGrid: document.querySelector("#jinguiGrid"),
+  formulaCount: document.querySelector("#formulaCount"),
+  shanghanCount: document.querySelector("#shanghanCount"),
+  jinguiCount: document.querySelector("#jinguiCount"),
+  formulasHint: document.querySelector("#formulasHint"),
+  shanghanHint: document.querySelector("#shanghanHint"),
+  jinguiHint: document.querySelector("#jinguiHint"),
+  bookFilters: document.querySelector("#bookFilters"),
+  categoryFilters: document.querySelector("#categoryFilters"),
+  modal: document.querySelector("#detailModal"),
+  modalCategory: document.querySelector("#modalCategory"),
+  modalTitle: document.querySelector("#modalTitle"),
+  modalTags: document.querySelector("#modalTags"),
+  modalDetails: document.querySelector("#modalDetails")
+};
+
+const labels = {
+  book: "经典",
+  source: "出处",
+  category: "六经 / 篇章",
   formula: "方名",
+  formulas: "关联方剂",
+  clauses: "关联条文",
+  number: "条文编号",
+  text: "条文",
   pattern: "病机",
   symptoms: "症状",
   keywords: "关键词",
-  summary: "摘要",
-  source: "来源",
   composition: "组成",
-  usage: "用法",
+  usage: "煎服法",
   indications: "主治",
-  notes: "要点",
-  complaint: "主诉",
-  diagnosis: "辨证",
-  prescription: "处方",
-  outcome: "转归",
-  record: "记录",
-  reflection: "复盘"
+  notes: "按语"
 };
 
 const detailOrder = [
+  "book",
+  "source",
+  "category",
+  "number",
+  "text",
   "formula",
+  "formulas",
+  "clauses",
   "pattern",
   "symptoms",
   "keywords",
-  "summary",
-  "source",
   "composition",
   "usage",
   "indications",
-  "complaint",
-  "diagnosis",
-  "prescription",
-  "outcome",
-  "record",
-  "reflection",
   "notes"
 ];
 
-function normalizeItems(items, source) {
-  return items.map((item, index) => ({
-    ...item,
-    id: item.id || `${source.key}-${index + 1}`,
-    type: source.key,
-    typeLabel: source.label
-  }));
-}
-
 async function loadData() {
-  try {
-    const results = await Promise.all(
-      sources.map(async (source) => {
-        const response = await fetch(source.path);
-        if (!response.ok) {
-          throw new Error(`无法读取 ${source.path}`);
-        }
-        const data = await response.json();
-        return [source.key, normalizeItems(data, source)];
-      })
-    );
+  const [formulas, shanghan, jingui] = await Promise.all([
+    fetchJson("./data/formulas.json"),
+    fetchJson("./data/shanghan-clauses.json"),
+    fetchJson("./data/jingui-clauses.json")
+  ]);
 
-    results.forEach(([key, items]) => {
-      state[key] = items;
-    });
-
-    renderAll();
-  } catch (error) {
-    emptyState.hidden = false;
-    emptyState.textContent = `${error.message}，请检查 data 目录下的 JSON 文件。`;
-  }
+  datasets.formulas = formulas;
+  datasets.shanghan = shanghan.map((item) => ({ ...item, book: "伤寒论" }));
+  datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略" }));
+  renderFilters();
+  renderAll();
 }
 
-function getSearchText(item) {
-  const fields = [
-    item.title,
-    item.formula,
-    item.pattern,
-    item.symptoms,
-    item.keywords,
-    item.category,
-    item.summary
-  ];
-
-  return fields.flat().filter(Boolean).join(" ").toLowerCase();
+async function fetchJson(path) {
+  const response = await fetch(path);
+  if (!response.ok) {
+    throw new Error(`无法读取 ${path}`);
+  }
+  return response.json();
 }
 
-function filterItems(items, query) {
-  if (!query) {
-    return items;
-  }
-  return items.filter((item) => getSearchText(item).includes(query));
+function renderFilters() {
+  renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略"], "book");
+  const categories = ["全部", ...new Set([
+    ...datasets.formulas.map((item) => item.category),
+    ...datasets.shanghan.map((item) => item.category),
+    ...datasets.jingui.map((item) => item.category)
+  ].filter(Boolean))];
+  renderChips(els.categoryFilters, categories, "category");
+}
+
+function renderChips(container, values, key) {
+  container.innerHTML = values.map((value) => (
+    `<button class="chip ${filters[key] === value ? "is-active" : ""}" type="button" data-filter="${key}" data-value="${escapeHtml(value)}">${escapeHtml(value)}</button>`
+  )).join("");
 }
 
 function renderAll() {
-  const query = searchInput.value.trim().toLowerCase();
-  let totalVisible = 0;
+  const query = els.search.value.trim().toLowerCase();
+  const formulas = applyFilters(datasets.formulas, query);
+  const shanghan = applyFilters(datasets.shanghan, query);
+  const jingui = applyFilters(datasets.jingui, query);
 
-  sources.forEach((source) => {
-    const items = filterItems(state[source.key], query);
-    totalVisible += items.length;
-    renderSection(source, items);
-  });
+  renderFormulaCards(formulas);
+  renderClauseList(els.shanghanGrid, shanghan, "伤寒论");
+  renderClauseList(els.jinguiGrid, jingui, "金匮要略");
 
-  emptyState.hidden = totalVisible > 0;
-  if (totalVisible === 0) {
-    emptyState.textContent = "没有找到匹配内容，请换个关键词试试。";
-  }
+  els.formulaCount.textContent = formulas.length;
+  els.shanghanCount.textContent = shanghan.length;
+  els.jinguiCount.textContent = jingui.length;
+  els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂。` : "当前筛选没有方剂。";
+  els.shanghanHint.textContent = shanghan.length ? `共 ${shanghan.length} 条伤寒论条文。` : "当前筛选没有伤寒论条文。";
+  els.jinguiHint.textContent = jingui.length ? `共 ${jingui.length} 条金匮要略条文。` : "当前筛选没有金匮要略条文。";
+  els.empty.hidden = formulas.length + shanghan.length + jingui.length > 0;
 }
 
-function renderSection(source, items) {
-  source.grid.innerHTML = "";
-  source.count.textContent = items.length;
-  source.hint.textContent = items.length
-    ? `共 ${items.length} 条，点击卡片查看详情。`
-    : "当前搜索没有匹配内容。";
+function applyFilters(items, query) {
+  return items.filter((item) => {
+    const bookOk = filters.book === "全部" || item.book === filters.book || item.source === filters.book;
+    const categoryOk = filters.category === "全部" || item.category === filters.category;
+    const queryOk = !query || searchableText(item).includes(query);
+    return bookOk && categoryOk && queryOk;
+  });
+}
 
-  items.forEach((item) => {
-    const card = document.createElement("button");
-    card.className = "library-card";
-    card.type = "button";
-    card.innerHTML = `
+function searchableText(item) {
+  return [
+    item.title,
+    item.name,
+    item.formula,
+    item.number,
+    item.text,
+    item.book,
+    item.source,
+    item.category,
+    item.pattern,
+    item.summary,
+    item.symptoms,
+    item.keywords,
+    item.formulas,
+    item.clauses
+  ].flat().filter(Boolean).join(" ").toLowerCase();
+}
+
+function renderFormulaCards(items) {
+  els.formulasGrid.innerHTML = items.map((item) => `
+    <button class="library-card" type="button" data-kind="formula" data-id="${escapeHtml(item.id)}">
       <div class="tag-row">
-        <span class="tag ${source.tagClass}">${item.typeLabel}</span>
-        ${renderTag(item.category)}
-        ${renderTag(item.pattern)}
+        ${tag(item.source)}
+        ${tag(item.category)}
       </div>
-      <h3>${escapeHtml(item.title || item.formula || "未命名资料")}</h3>
-      <p>${escapeHtml(item.summary || item.notes || "暂无摘要。")}</p>
+      <h3>${escapeHtml(item.name)}</h3>
+      <p>${escapeHtml(item.pattern || item.indications || "")}</p>
       <div class="card-footer">
-        <span>${escapeHtml(item.formula || item.category || "资料")}</span>
+        <span>${escapeHtml(formatList(item.clauses) || "条文待补")}</span>
         <span>查看详情</span>
       </div>
-    `;
-    card.addEventListener("click", () => openModal(item));
-    source.grid.appendChild(card);
-  });
+    </button>
+  `).join("");
 }
 
-function renderTag(value) {
-  if (!value) {
-    return "";
-  }
+function renderClauseList(container, items, book) {
+  container.innerHTML = items.map((item) => `
+    <button class="clause-card" type="button" data-kind="${book === "伤寒论" ? "shanghan" : "jingui"}" data-id="${escapeHtml(item.id)}">
+      <div class="clause-head">
+        <strong>${escapeHtml(item.number ? `${book} ${item.number}` : book)}</strong>
+        <span>${escapeHtml(item.category)}</span>
+      </div>
+      <p>${escapeHtml(item.text)}</p>
+      <div class="tag-row">${(item.formulas || []).map(tag).join("")}</div>
+    </button>
+  `).join("");
+}
+
+function tag(value) {
+  if (!value) return "";
   return `<span class="tag">${escapeHtml(String(value))}</span>`;
 }
 
-function openModal(item) {
-  modalFields.category.textContent = item.typeLabel;
-  modalFields.title.textContent = item.title || item.formula || "未命名资料";
-  modalFields.tags.innerHTML = [
-    item.category,
-    item.formula,
-    item.pattern,
-    ...(Array.isArray(item.keywords) ? item.keywords : [])
-  ].filter(Boolean).map((value) => `<span class="tag">${escapeHtml(String(value))}</span>`).join("");
-
-  modalFields.details.innerHTML = buildDetails(item);
-  modal.hidden = false;
+function openDetail(kind, id) {
+  const item = datasets[kind].find((entry) => entry.id === id);
+  if (!item) return;
+  const title = item.name || item.title || `${item.book || ""} ${item.number || ""}`.trim();
+  els.modalCategory.textContent = kind === "formulas" ? "方剂" : item.book;
+  els.modalTitle.textContent = title;
+  els.modalTags.innerHTML = [item.source, item.book, item.category, ...(item.keywords || [])].filter(Boolean).map(tag).join("");
+  els.modalDetails.innerHTML = buildDetails(item);
+  els.modal.hidden = false;
   document.body.style.overflow = "hidden";
 }
 
 function buildDetails(item) {
-  const keys = [
-    ...detailOrder,
-    ...Object.keys(item).filter((key) => !detailOrder.includes(key))
-  ];
-
+  const keys = [...detailOrder, ...Object.keys(item).filter((key) => !detailOrder.includes(key))];
   return keys
-    .filter((key) => !["id", "type", "typeLabel", "title", "category"].includes(key))
+    .filter((key) => !["id", "name", "title"].includes(key))
     .filter((key) => hasValue(item[key]))
     .map((key) => `
       <div class="detail-item">
-        <div class="detail-label">${detailLabels[key] || key}</div>
-        <p class="detail-value">${escapeHtml(formatValue(item[key]))}</p>
+        <div class="detail-label">${escapeHtml(labels[key] || key)}</div>
+        <p class="detail-value">${escapeHtml(formatList(item[key]))}</p>
       </div>
-    `)
-    .join("");
+    `).join("");
 }
 
 function hasValue(value) {
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-  return value !== undefined && value !== null && String(value).trim() !== "";
+  return Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && String(value).trim() !== "";
 }
 
-function formatValue(value) {
-  if (Array.isArray(value)) {
-    return value.join("、");
-  }
-  return String(value);
+function formatList(value) {
+  return Array.isArray(value) ? value.join("、") : String(value ?? "");
 }
 
 function closeModal() {
-  modal.hidden = true;
+  els.modal.hidden = true;
   document.body.style.overflow = "";
 }
 
@@ -252,18 +233,36 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-searchInput.addEventListener("input", renderAll);
+document.addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-filter]");
+  if (chip) {
+    filters[chip.dataset.filter] = chip.dataset.value;
+    renderFilters();
+    renderAll();
+    return;
+  }
 
-modal.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-kind][data-id]");
+  if (card) {
+    const key = card.dataset.kind === "formula" ? "formulas" : card.dataset.kind;
+    openDetail(key, card.dataset.id);
+    return;
+  }
+
   if (event.target.matches("[data-close-modal]")) {
     closeModal();
   }
 });
 
+els.search.addEventListener("input", renderAll);
+
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !modal.hidden) {
+  if (event.key === "Escape" && !els.modal.hidden) {
     closeModal();
   }
 });
 
-loadData();
+loadData().catch((error) => {
+  els.empty.hidden = false;
+  els.empty.textContent = `${error.message}，请检查 data 目录下的 JSON 文件。`;
+});
