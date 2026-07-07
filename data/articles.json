@@ -1,0 +1,122 @@
+[
+  {
+    "id": "sh-taiyang-guizhi",
+    "title": "太阳病篇：桂枝汤系",
+    "book": "伤寒论",
+    "category": "太阳病",
+    "volume": "第一卷",
+    "path": "./data/articles/sh-taiyang-guizhi.txt",
+    "keywords": ["桂枝汤", "桂枝加葛根汤", "葛根汤", "营卫不和", "太阳中风"],
+    "summary": "太阳病总纲、太阳中风、桂枝汤及桂枝汤系加减方证。"
+  },
+  {
+    "id": "sh-taiyang-mahuang",
+    "title": "太阳病篇：麻黄汤系、大小青龙汤系、麻杏石甘汤系",
+    "book": "伤寒论",
+    "category": "太阳病",
+    "volume": "第二卷",
+    "path": "./data/articles/sh-taiyang-mahuang.txt",
+    "keywords": ["麻黄汤", "大青龙汤", "小青龙汤", "麻杏石甘汤", "太阳伤寒"],
+    "summary": "太阳伤寒、表实无汗、青龙汤系与麻杏石甘汤相关方证。"
+  },
+  {
+    "id": "sh-taiyang-shuixue",
+    "title": "太阳病篇：蓄水证、蓄血证、栀子豉汤系、误汗误下变证",
+    "book": "伤寒论",
+    "category": "太阳病",
+    "volume": "第三卷",
+    "path": "./data/articles/sh-taiyang-shuixue.txt",
+    "keywords": ["五苓散", "桃核承气汤", "抵当汤", "栀子豉汤", "蓄水", "蓄血"],
+    "summary": "太阳病化水化血、郁热烦躁与误汗误下后的变证整理。"
+  },
+  {
+    "id": "sh-taiyang-jiexiong",
+    "title": "太阳病篇：结胸证、痞证、泻心汤系、十枣汤系",
+    "book": "伤寒论",
+    "category": "太阳病",
+    "volume": "第四卷",
+    "path": "./data/articles/sh-taiyang-jiexiong.txt",
+    "keywords": ["结胸", "痞证", "泻心汤", "十枣汤", "大陷胸汤"],
+    "summary": "结胸与痞证辨别，泻心汤系、陷胸汤系、十枣汤系方证。"
+  },
+  {
+    "id": "sh-taiyang-broken",
+    "title": "太阳病篇：火逆、奔豚、动悸、坏病、不可汗下与方剂索引",
+    "book": "伤寒论",
+    "category": "太阳病",
+    "volume": "第五卷",
+    "path": "./data/articles/sh-taiyang-broken.txt",
+    "keywords": ["坏病", "火逆", "奔豚", "动悸", "不可汗", "不可下"],
+    "summary": "太阳误治后坏病、火逆、奔豚、动悸及太阳篇方剂索引。"
+  },
+  {
+    "id": "sh-yangming-main",
+    "title": "阳明病篇：总纲、白虎汤系、承气汤系、麻子仁丸",
+    "book": "伤寒论",
+    "category": "阳明病",
+    "volume": "第六卷",
+    "path": "./data/articles/sh-yangming-main.txt",
+    "keywords": ["阳明病", "白虎汤", "承气汤", "麻子仁丸", "腑实", "胃热"],
+    "summary": "阳明病总纲、经热与腑实辨证，白虎汤系、承气汤系与麻子仁丸。"
+  },
+  {
+    "id": "sh-yangming-misc",
+    "title": "阳明病篇：阳明中寒、吴茱萸汤、猪苓汤、发黄诸方、误治辨证",
+    "book": "伤寒论",
+    "category": "阳明病",
+    "volume": "第七卷",
+    "path": "./data/articles/sh-yangming-misc.txt",
+    "keywords": ["阳明中寒", "吴茱萸汤", "猪苓汤", "茵陈蒿汤", "发黄"],
+    "summary": "阳明中寒、水热互结、发黄诸方与阳明误治辨证。"
+  },
+  {
+    "id": "sh-shaoyang",
+    "title": "少阳病篇：小柴胡汤系、柴胡桂枝汤、大柴胡汤、柴胡桂枝干姜汤、柴胡加龙骨牡蛎汤",
+    "book": "伤寒论",
+    "category": "少阳病",
+    "volume": "第八卷",
+    "path": "./data/articles/sh-shaoyang.txt",
+    "keywords": ["小柴胡汤", "柴胡桂枝汤", "大柴胡汤", "柴胡桂枝干姜汤", "柴胡加龙骨牡蛎汤"],
+    "summary": "少阳枢机、小柴胡汤系及柴胡类方的方证鉴别。"
+  },
+  {
+    "id": "sh-taiyin",
+    "title": "太阴病篇：太阴总纲、理中汤系、桂枝加芍药汤、桂枝加大黄汤、厚朴生姜半夏甘草人参汤",
+    "book": "伤寒论",
+    "category": "太阴病",
+    "volume": "第九卷",
+    "path": "./data/articles/sh-taiyin.txt",
+    "keywords": ["太阴病", "理中汤", "桂枝加芍药汤", "桂枝加大黄汤", "厚朴生姜半夏甘草人参汤"],
+    "summary": "太阴虚寒、腹满自利、理中汤系及太阴兼实方证。"
+  },
+  {
+    "id": "sh-shaoyin",
+    "title": "少阴病篇：总纲、寒化证、热化证、咽痛证、水气证",
+    "book": "伤寒论",
+    "category": "少阴病",
+    "volume": "第十卷",
+    "path": "./data/articles/sh-shaoyin.txt",
+    "keywords": ["少阴病", "四逆汤", "真武汤", "黄连阿胶汤", "猪肤汤", "咽痛"],
+    "summary": "少阴寒化、热化、咽痛、水气诸证及核心方证。"
+  },
+  {
+    "id": "sh-jueyin",
+    "title": "厥阴病篇：厥阴总纲、乌梅丸、当归四逆汤、白头翁汤、四逆散、干姜黄芩黄连人参汤、麻黄升麻汤",
+    "book": "伤寒论",
+    "category": "厥阴病",
+    "volume": "第十一卷",
+    "path": "./data/articles/sh-jueyin.txt",
+    "keywords": ["厥阴病", "乌梅丸", "当归四逆汤", "白头翁汤", "四逆散", "麻黄升麻汤"],
+    "summary": "厥阴寒热错杂、厥热胜复、寒利热利与厥阴代表方证。"
+  },
+  {
+    "id": "sh-huoluan-index",
+    "title": "霍乱病、差后劳复、阴阳易、伤寒论方剂总索引",
+    "book": "伤寒论",
+    "category": "霍乱与差后劳复",
+    "volume": "第十二卷",
+    "path": "./data/articles/sh-huoluan-index.txt",
+    "keywords": ["霍乱", "差后劳复", "阴阳易", "方剂索引", "理中丸"],
+    "summary": "霍乱病、病后劳复、阴阳易及伤寒论方剂总索引。"
+  }
+]
