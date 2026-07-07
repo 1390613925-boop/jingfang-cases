@@ -65,7 +65,7 @@ async function fetchArticles(path) {
 }
 
 function parseBundledArticles(raw) {
-  const chunks = raw.split(/\n(?=文件名：)/).filter((chunk) => chunk.startsWith("文件名："));
+  const chunks = raw.split(/(?=文件名：)/).filter((chunk) => chunk.startsWith("文件名："));
   return chunks.map((chunk, index) => {
     const volume = getLineValue(chunk, "卷次") || `第${index + 1}卷`;
     const scope = getLineValue(chunk, "范围") || `专题 ${index + 1}`;
