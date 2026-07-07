@@ -1,8 +1,10 @@
 const datasets = {
+  articles: [],
   formulas: [],
-  shanghan: [],
   jingui: []
 };
+
+const articleTextCache = new Map();
 
 const filters = {
   book: "全部",
@@ -12,14 +14,14 @@ const filters = {
 const els = {
   search: document.querySelector("#siteSearch"),
   empty: document.querySelector("#emptyState"),
+  articlesGrid: document.querySelector("#articlesGrid"),
   formulasGrid: document.querySelector("#formulasGrid"),
-  shanghanGrid: document.querySelector("#shanghanGrid"),
   jinguiGrid: document.querySelector("#jinguiGrid"),
+  articleCount: document.querySelector("#articleCount"),
   formulaCount: document.querySelector("#formulaCount"),
-  shanghanCount: document.querySelector("#shanghanCount"),
   jinguiCount: document.querySelector("#jinguiCount"),
+  articlesHint: document.querySelector("#articlesHint"),
   formulasHint: document.querySelector("#formulasHint"),
-  shanghanHint: document.querySelector("#shanghanHint"),
   jinguiHint: document.querySelector("#jinguiHint"),
   bookFilters: document.querySelector("#bookFilters"),
   categoryFilters: document.querySelector("#categoryFilters"),
@@ -34,6 +36,7 @@ const labels = {
   book: "经典",
   source: "出处",
   category: "六经 / 篇章",
+  volume: "卷次",
   formula: "方名",
   formulas: "关联方剂",
   clauses: "关联条文",
@@ -45,6 +48,7 @@ const labels = {
   composition: "组成",
   usage: "煎服法",
   indications: "主治",
+  summary: "摘要",
   notes: "按语"
 };
 
@@ -52,6 +56,7 @@ const detailOrder = [
   "book",
   "source",
   "category",
+  "volume",
   "number",
   "text",
   "formula",
@@ -63,19 +68,25 @@ const detailOrder = [
   "composition",
   "usage",
   "indications",
+  "summary",
   "notes"
 ];
 
 async function loadData() {
-  const [formulas, shanghan, jingui] = await Promise.all([
+  const [articles, formulas, jingui] = await Promise.all([
+    fetchJson("./data/articles.json"),
     fetchJson("./data/formulas.json"),
-    fetchJson("./data/shanghan-clauses.json"),
     fetchJson("./data/jingui-clauses.json")
   ]);
 
-  datasets.formulas = formulas;
-  datasets.shanghan = shanghan.map((item) => ({ ...item, book: "伤寒论" }));
-  datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略" }));
+  datasets.articles = articles.map((item) => ({ ...item, type: "article" }));
+  datasets.formulas = formulas.map((item) => ({
+    ...item,
+    book: item.source || "经方",
+    type: "formula"
+  }));
+  datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略", type: "jingui" }));
+
   renderFilters();
   renderAll();
 }
@@ -88,11 +99,24 @@ async function fetchJson(path) {
   return response.json();
 }
 
+async function fetchText(path) {
+  if (articleTextCache.has(path)) {
+    return articleTextCache.get(path);
+  }
+  const response = await fetch(path);
+  if (!response.ok) {
+    throw new Error(`无法读取 ${path}`);
+  }
+  const text = await response.text();
+  articleTextCache.set(path, text);
+  return text;
+}
+
 function renderFilters() {
   renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略"], "book");
   const categories = ["全部", ...new Set([
+    ...datasets.articles.map((item) => item.category),
     ...datasets.formulas.map((item) => item.category),
-    ...datasets.shanghan.map((item) => item.category),
     ...datasets.jingui.map((item) => item.category)
   ].filter(Boolean))];
   renderChips(els.categoryFilters, categories, "category");
@@ -106,21 +130,21 @@ function renderChips(container, values, key) {
 
 function renderAll() {
   const query = els.search.value.trim().toLowerCase();
+  const articles = applyFilters(datasets.articles, query);
   const formulas = applyFilters(datasets.formulas, query);
-  const shanghan = applyFilters(datasets.shanghan, query);
   const jingui = applyFilters(datasets.jingui, query);
 
+  renderArticleCards(articles);
   renderFormulaCards(formulas);
-  renderClauseList(els.shanghanGrid, shanghan, "伤寒论");
   renderClauseList(els.jinguiGrid, jingui, "金匮要略");
 
+  els.articleCount.textContent = articles.length;
   els.formulaCount.textContent = formulas.length;
-  els.shanghanCount.textContent = shanghan.length;
   els.jinguiCount.textContent = jingui.length;
+  els.articlesHint.textContent = articles.length ? `共 ${articles.length} 个专题。` : "当前筛选没有专题。";
   els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂。` : "当前筛选没有方剂。";
-  els.shanghanHint.textContent = shanghan.length ? `共 ${shanghan.length} 条伤寒论条文。` : "当前筛选没有伤寒论条文。";
   els.jinguiHint.textContent = jingui.length ? `共 ${jingui.length} 条金匮要略条文。` : "当前筛选没有金匮要略条文。";
-  els.empty.hidden = formulas.length + shanghan.length + jingui.length > 0;
+  els.empty.hidden = articles.length + formulas.length + jingui.length > 0;
 }
 
 function applyFilters(items, query) {
@@ -142,6 +166,7 @@ function searchableText(item) {
     item.book,
     item.source,
     item.category,
+    item.volume,
     item.pattern,
     item.summary,
     item.symptoms,
@@ -149,6 +174,24 @@ function searchableText(item) {
     item.formulas,
     item.clauses
   ].flat().filter(Boolean).join(" ").toLowerCase();
+}
+
+function renderArticleCards(items) {
+  els.articlesGrid.innerHTML = items.map((item) => `
+    <button class="library-card article-card" type="button" data-kind="article" data-id="${escapeHtml(item.id)}">
+      <div class="tag-row">
+        ${tag(item.book)}
+        ${tag(item.category)}
+        ${tag(item.volume)}
+      </div>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(item.summary || "")}</p>
+      <div class="card-footer">
+        <span>${escapeHtml((item.keywords || []).slice(0, 3).join("、"))}</span>
+        <span>阅读全文</span>
+      </div>
+    </button>
+  `).join("");
 }
 
 function renderFormulaCards(items) {
@@ -159,7 +202,7 @@ function renderFormulaCards(items) {
         ${tag(item.category)}
       </div>
       <h3>${escapeHtml(item.name)}</h3>
-      <p>${escapeHtml(item.pattern || item.indications || "")}</p>
+      <p>${escapeHtml(item.pattern || item.indications || item.notes || "")}</p>
       <div class="card-footer">
         <span>${escapeHtml(formatList(item.clauses) || "条文待补")}</span>
         <span>查看详情</span>
@@ -170,7 +213,7 @@ function renderFormulaCards(items) {
 
 function renderClauseList(container, items, book) {
   container.innerHTML = items.map((item) => `
-    <button class="clause-card" type="button" data-kind="${book === "伤寒论" ? "shanghan" : "jingui"}" data-id="${escapeHtml(item.id)}">
+    <button class="clause-card" type="button" data-kind="jingui" data-id="${escapeHtml(item.id)}">
       <div class="clause-head">
         <strong>${escapeHtml(item.number ? `${book} ${item.number}` : book)}</strong>
         <span>${escapeHtml(item.category)}</span>
@@ -186,22 +229,39 @@ function tag(value) {
   return `<span class="tag">${escapeHtml(String(value))}</span>`;
 }
 
-function openDetail(kind, id) {
-  const item = datasets[kind].find((entry) => entry.id === id);
+async function openDetail(kind, id) {
+  const sourceKey = kind === "formula" ? "formulas" : kind === "article" ? "articles" : "jingui";
+  const item = datasets[sourceKey].find((entry) => entry.id === id);
   if (!item) return;
+
   const title = item.name || item.title || `${item.book || ""} ${item.number || ""}`.trim();
-  els.modalCategory.textContent = kind === "formulas" ? "方剂" : item.book;
+  els.modalCategory.textContent = kind === "formula" ? "方剂" : item.book;
   els.modalTitle.textContent = title;
-  els.modalTags.innerHTML = [item.source, item.book, item.category, ...(item.keywords || [])].filter(Boolean).map(tag).join("");
-  els.modalDetails.innerHTML = buildDetails(item);
+  els.modalTags.innerHTML = [item.source, item.book, item.category, item.volume, ...(item.keywords || [])].filter(Boolean).map(tag).join("");
+  els.modalDetails.innerHTML = kind === "article"
+    ? "<p class=\"detail-value\">正文加载中...</p>"
+    : buildDetails(item);
   els.modal.hidden = false;
   document.body.style.overflow = "hidden";
+
+  if (kind === "article") {
+    try {
+      const text = await fetchText(item.path);
+      els.modalDetails.innerHTML = `
+        ${buildDetails(item, ["path"])}
+        <div class="article-body">${escapeHtml(text)}</div>
+      `;
+    } catch (error) {
+      els.modalDetails.innerHTML = `<p class="detail-value">${escapeHtml(error.message)}</p>`;
+    }
+  }
 }
 
-function buildDetails(item) {
+function buildDetails(item, extraHidden = []) {
+  const hidden = new Set(["id", "name", "title", "type", ...extraHidden]);
   const keys = [...detailOrder, ...Object.keys(item).filter((key) => !detailOrder.includes(key))];
   return keys
-    .filter((key) => !["id", "name", "title"].includes(key))
+    .filter((key) => !hidden.has(key))
     .filter((key) => hasValue(item[key]))
     .map((key) => `
       <div class="detail-item">
@@ -244,8 +304,7 @@ document.addEventListener("click", (event) => {
 
   const card = event.target.closest("[data-kind][data-id]");
   if (card) {
-    const key = card.dataset.kind === "formula" ? "formulas" : card.dataset.kind;
-    openDetail(key, card.dataset.id);
+    openDetail(card.dataset.kind, card.dataset.id);
     return;
   }
 
