@@ -1,0 +1,41 @@
+[
+  {
+    "id": "exp-gui-zhi-review",
+    "title": "桂枝汤学习复盘",
+    "category": "方证笔记",
+    "formula": "桂枝汤",
+    "pattern": "营卫不和",
+    "symptoms": ["恶风", "自汗", "头痛", "脉浮缓"],
+    "keywords": ["个人经验", "方证", "太阳中风"],
+    "summary": "记录桂枝汤方证的识别要点：有汗、恶风、脉浮缓，重在营卫不和。",
+    "record": "复盘时发现，桂枝汤证常被误看成普通感冒。真正需要抓的是表虚汗出与恶风并见。",
+    "reflection": "后续整理病例时，先记录有汗无汗、恶风恶寒、脉象与服药后汗出情况。",
+    "notes": "个人学习记录，仅用于整理思路。"
+  },
+  {
+    "id": "exp-shao-yang-keywords",
+    "title": "少阳证检索关键词",
+    "category": "检索标签",
+    "formula": "小柴胡汤",
+    "pattern": "少阳枢机不利",
+    "symptoms": ["寒热往来", "胸胁苦满", "口苦", "咽干"],
+    "keywords": ["个人经验", "少阳", "半表半里", "柴胡"],
+    "summary": "为少阳相关资料建立关键词，便于后续搜索和横向对比。",
+    "record": "常用检索词包括寒热往来、胸胁苦满、口苦、咽干、目眩、纳差、脉弦。",
+    "reflection": "遇到发热类记录时，不只看体温，还要追问往来节律与胸胁症状。",
+    "notes": "可继续补充倪师相关讲解摘录。"
+  },
+  {
+    "id": "exp-data-rule",
+    "title": "资料录入规则",
+    "category": "维护说明",
+    "formula": "",
+    "pattern": "结构化记录",
+    "symptoms": [],
+    "keywords": ["个人经验", "数据维护", "JSON"],
+    "summary": "新增资料时尽量填写标题、方名、病机、症状、关键词和摘要，方便搜索。",
+    "record": "三类 JSON 都使用数组结构，每条资料是一个对象。字段可以按内容增减，但建议保持 title、category、formula、pattern、symptoms、keywords、summary。",
+    "reflection": "结构越稳定，后续迁移、筛选和生成索引越方便。",
+    "notes": "字段为空时可以留空字符串或空数组。"
+  }
+]
