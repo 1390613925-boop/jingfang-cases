@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>京方箱：经典经方、倪师医案、个人经验资料库</title>
+  <title>京方箱：伤寒论、金匮要略经方条辨库</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <p class="eyebrow">经典经方 · 倪师医案 · 个人经验</p>
+      <p class="eyebrow">伤寒论六经 · 金匮要略篇章 · 经方条辨</p>
       <h1>京方箱</h1>
-      <p class="intro">经典经方、倪师医案、个人经验资料库。按方名、病机、症状与关键词整理，便于学习、检索与复盘。</p>
+      <p class="intro">以《伤寒论》《金匮要略》为主轴整理经方、条文、六经与篇章归属，先建立稳定资料库框架，再持续补全全本条辨。</p>
       <div class="search-wrap">
-        <label for="siteSearch">搜索资料</label>
-        <input id="siteSearch" type="search" placeholder="输入标题、方名、病机、症状或关键词">
+        <label for="siteSearch">搜索经方条辨</label>
+        <input id="siteSearch" type="search" placeholder="输入方名、条文编号、六经、篇章、症状、病机或关键词">
       </div>
     </div>
   </header>
@@ -23,43 +23,54 @@
     <section class="summary-row" aria-label="资料概览">
       <div>
         <strong id="formulaCount">0</strong>
-        <span>经典经方</span>
+        <span>经方</span>
       </div>
       <div>
-        <strong id="caseCount">0</strong>
-        <span>倪师医案</span>
+        <strong id="shanghanCount">0</strong>
+        <span>伤寒论条文</span>
       </div>
       <div>
-        <strong id="experienceCount">0</strong>
-        <span>个人经验</span>
+        <strong id="jinguiCount">0</strong>
+        <span>金匮要略条文</span>
+      </div>
+    </section>
+
+    <section class="filters" aria-label="资料筛选">
+      <div>
+        <span>经典</span>
+        <div id="bookFilters" class="chip-row"></div>
+      </div>
+      <div>
+        <span>六经 / 篇章</span>
+        <div id="categoryFilters" class="chip-row"></div>
       </div>
     </section>
 
     <section class="library-section" aria-labelledby="formulasTitle">
       <div class="section-head">
-        <h2 id="formulasTitle">经典经方</h2>
-        <p id="formulasHint">点击卡片查看方义与应用要点。</p>
+        <h2 id="formulasTitle">方剂总库</h2>
+        <p id="formulasHint">点击方剂查看出处、关联条文与方证要点。</p>
       </div>
       <div id="formulasGrid" class="card-grid" aria-live="polite"></div>
     </section>
 
-    <section class="library-section" aria-labelledby="casesTitle">
+    <section class="library-section" aria-labelledby="shanghanTitle">
       <div class="section-head">
-        <h2 id="casesTitle">倪师医案</h2>
-        <p id="casesHint">点击卡片查看辨证与处方思路。</p>
+        <h2 id="shanghanTitle">伤寒论条辨</h2>
+        <p id="shanghanHint">按六经归类，并关联对应方剂。</p>
       </div>
-      <div id="casesGrid" class="card-grid" aria-live="polite"></div>
+      <div id="shanghanGrid" class="clause-list" aria-live="polite"></div>
     </section>
 
-    <section class="library-section" aria-labelledby="experienceTitle">
+    <section class="library-section" aria-labelledby="jinguiTitle">
       <div class="section-head">
-        <h2 id="experienceTitle">个人经验</h2>
-        <p id="experienceHint">点击卡片查看记录与复盘。</p>
+        <h2 id="jinguiTitle">金匮要略条辨</h2>
+        <p id="jinguiHint">按篇章归类，并关联对应方剂。</p>
       </div>
-      <div id="experienceGrid" class="card-grid" aria-live="polite"></div>
+      <div id="jinguiGrid" class="clause-list" aria-live="polite"></div>
     </section>
 
-    <p id="emptyState" class="empty-state" hidden>没有找到匹配内容，请换个关键词试试。</p>
+    <p id="emptyState" class="empty-state" hidden>没有找到匹配内容，请换个关键词或分类试试。</p>
   </main>
 
   <footer class="site-footer">
