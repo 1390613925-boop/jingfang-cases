@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>京方箱：伤寒论、金匮要略经方条辨库</title>
+  <title>六经方证录：伤寒论与金匮要略经方条辨库</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <p class="eyebrow">伤寒论六经 · 金匮要略篇章 · 经方条辨</p>
-      <h1>京方箱</h1>
-      <p class="intro">以《伤寒论》《金匮要略》为主轴整理经方、条文、六经与篇章归属，先建立稳定资料库框架，再持续补全全本条辨。</p>
+      <p class="eyebrow">伤寒六经 · 方证条辨 · 经方索引</p>
+      <h1>六经方证录</h1>
+      <p class="intro">按六经、篇章与方证脉络整理《伤寒论》《金匮要略》资料，专题正文点击后再加载，便于持续补充与校勘。</p>
       <div class="search-wrap">
         <label for="siteSearch">搜索经方条辨</label>
-        <input id="siteSearch" type="search" placeholder="输入方名、条文编号、六经、篇章、症状、病机或关键词">
+        <input id="siteSearch" type="search" placeholder="输入方名、六经、篇章、症状、病机或关键词">
       </div>
     </div>
   </header>
@@ -22,12 +22,12 @@
   <main class="content">
     <section class="summary-row" aria-label="资料概览">
       <div>
-        <strong id="formulaCount">0</strong>
-        <span>经方</span>
+        <strong id="articleCount">0</strong>
+        <span>伤寒专题</span>
       </div>
       <div>
-        <strong id="shanghanCount">0</strong>
-        <span>伤寒论条文</span>
+        <strong id="formulaCount">0</strong>
+        <span>经方索引</span>
       </div>
       <div>
         <strong id="jinguiCount">0</strong>
@@ -46,20 +46,20 @@
       </div>
     </section>
 
+    <section class="library-section" aria-labelledby="articlesTitle">
+      <div class="section-head">
+        <h2 id="articlesTitle">伤寒论六经专题</h2>
+        <p id="articlesHint">按六经与专题归类，点击后加载完整条辨正文。</p>
+      </div>
+      <div id="articlesGrid" class="card-grid" aria-live="polite"></div>
+    </section>
+
     <section class="library-section" aria-labelledby="formulasTitle">
       <div class="section-head">
         <h2 id="formulasTitle">方剂总库</h2>
         <p id="formulasHint">点击方剂查看出处、关联条文与方证要点。</p>
       </div>
       <div id="formulasGrid" class="card-grid" aria-live="polite"></div>
-    </section>
-
-    <section class="library-section" aria-labelledby="shanghanTitle">
-      <div class="section-head">
-        <h2 id="shanghanTitle">伤寒论条辨</h2>
-        <p id="shanghanHint">按六经归类，并关联对应方剂。</p>
-      </div>
-      <div id="shanghanGrid" class="clause-list" aria-live="polite"></div>
     </section>
 
     <section class="library-section" aria-labelledby="jinguiTitle">
