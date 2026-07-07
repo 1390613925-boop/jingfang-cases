@@ -1,16 +1,21 @@
-const datasets = { articles: [], formulas: [], jingui: [] };
-const filters = { book: "全部", category: "全部" };
+const datasets = {
+  formulas: [],
+  jingui: []
+};
+
+const filters = {
+  book: "全部",
+  category: "全部"
+};
 
 const els = {
   search: document.querySelector("#siteSearch"),
   empty: document.querySelector("#emptyState"),
-  articlesGrid: document.querySelector("#articlesGrid"),
   formulasGrid: document.querySelector("#formulasGrid"),
   jinguiGrid: document.querySelector("#jinguiGrid"),
-  articleCount: document.querySelector("#articleCount"),
   formulaCount: document.querySelector("#formulaCount"),
+  sourceCount: document.querySelector("#sourceCount"),
   jinguiCount: document.querySelector("#jinguiCount"),
-  articlesHint: document.querySelector("#articlesHint"),
   formulasHint: document.querySelector("#formulasHint"),
   jinguiHint: document.querySelector("#jinguiHint"),
   bookFilters: document.querySelector("#bookFilters"),
@@ -23,23 +28,47 @@ const els = {
 };
 
 const labels = {
-  book: "经典", source: "出处", category: "六经 / 篇章", volume: "卷次",
-  formula: "方名", formulas: "关联方剂", clauses: "关联条文", number: "条文编号",
-  text: "条文", pattern: "病机", symptoms: "症状", keywords: "关键词",
-  composition: "组成", usage: "煎服法", indications: "主治", summary: "摘要", notes: "按语"
+  book: "经典",
+  source: "出处",
+  category: "六经 / 篇章",
+  volume: "卷次",
+  sourceTopic: "整理范围",
+  formula: "方名",
+  formulas: "关联方剂",
+  clauses: "条文",
+  number: "条文编号",
+  text: "条文",
+  sixChannel: "六经",
+  syndrome: "证型 / 主证",
+  pattern: "病机",
+  treatment: "治法",
+  symptoms: "症状",
+  keywords: "关键词",
+  composition: "组成",
+  dosage: "常用成人剂量参考",
+  usage: "煎服法",
+  formulaMeaning: "方义",
+  keyPoints: "辨证抓手",
+  differentiation: "鉴别",
+  warnings: "提醒",
+  indications: "主治",
+  notes: "条辨 / 按语"
 };
 
-const detailOrder = ["book", "source", "category", "volume", "number", "text", "formula", "formulas", "clauses", "pattern", "symptoms", "keywords", "composition", "usage", "indications", "summary", "notes"];
+const detailOrder = [
+  "book", "source", "category", "volume", "sourceTopic", "clauses", "sixChannel",
+  "syndrome", "pattern", "treatment", "composition", "dosage", "usage", "formulaMeaning",
+  "keyPoints", "differentiation", "warnings", "indications", "notes", "keywords"
+];
 
 async function loadData() {
-  const [articles, formulas, jingui] = await Promise.all([
-    fetchArticles("./data/articles.json"),
-    fetchJson("./data/formulas.json"),
+  const [articleText, legacyFormulas, jingui] = await Promise.all([
+    fetchText("./data/articles.json"),
+    fetchJson("./data/formulas.json").catch(() => []),
     fetchJson("./data/jingui-clauses.json")
   ]);
 
-  datasets.articles = articles.map((item) => ({ ...item, type: "article", book: item.book || "伤寒论" }));
-  datasets.formulas = formulas.map((item) => ({ ...item, book: item.source || "经方", type: "formula" }));
+  datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas);
   datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略", type: "jingui" }));
   renderFilters();
   renderAll();
@@ -51,36 +80,85 @@ async function fetchJson(path) {
   return response.json();
 }
 
-async function fetchArticles(path) {
+async function fetchText(path) {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`无法读取 ${path}`);
-  const raw = await response.text();
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-  } catch (error) {
-    return parseBundledArticles(raw);
-  }
-  return parseBundledArticles(raw);
+  return response.text();
 }
 
-function parseBundledArticles(raw) {
-  const chunks = raw.split(/(?=文件名：)/).filter((chunk) => chunk.startsWith("文件名："));
-  return chunks.map((chunk, index) => {
-    const volume = getLineValue(chunk, "卷次") || `第${index + 1}卷`;
-    const scope = getLineValue(chunk, "范围") || `专题 ${index + 1}`;
-    const category = detectCategory(scope);
-    return {
-      id: `article-${index + 1}`,
-      title: scope.replace("·", "："),
-      book: "伤寒论",
-      category,
-      volume,
-      keywords: extractKeywords(scope),
-      summary: summarizeScope(scope),
-      content: chunk.trim()
-    };
+function mergeFormulas(parsed, legacy) {
+  const byName = new Map();
+  legacy.forEach((item) => {
+    if (item.name) byName.set(item.name, normalizeLegacyFormula(item));
   });
+  parsed.forEach((item) => byName.set(item.name, item));
+  return [...byName.values()].sort((a, b) => `${a.category}${a.name}`.localeCompare(`${b.category}${b.name}`, "zh-Hans-CN"));
+}
+
+function normalizeLegacyFormula(item) {
+  return {
+    ...item,
+    book: item.source || "伤寒论",
+    source: item.source || "伤寒论",
+    type: "formula",
+    syndrome: item.syndrome || item.pattern || "",
+    treatment: item.treatment || "",
+    formulaMeaning: item.formulaMeaning || "",
+    keyPoints: item.keyPoints || "",
+    sourceTopic: item.sourceTopic || item.category || "",
+    keywords: item.keywords || [item.name, item.category].filter(Boolean)
+  };
+}
+
+function parseFormulaCards(raw) {
+  const textParts = raw.split(/(?=文件名：)/).filter((part) => part.includes("【方名】"));
+  const cards = [];
+
+  textParts.forEach((textPart) => {
+    const volume = getLineValue(textPart, "卷次");
+    const sourceTopic = getLineValue(textPart, "范围");
+    const sections = textPart.split(/\n={20,}\n/).filter((section) => section.includes("【方名】"));
+
+    sections.forEach((section) => {
+      const name = getField(section, "方名").replace(/。$/, "").trim();
+      if (!name) return;
+      const category = detectCategory(sourceTopic + section);
+      const item = {
+        id: makeId(name),
+        name,
+        title: sectionHeading(section) || name,
+        book: "伤寒论",
+        source: "伤寒论",
+        type: "formula",
+        category,
+        volume,
+        sourceTopic,
+        clauses: getField(section, "条文") || getField(section, "条文关联"),
+        sixChannel: getField(section, "六经"),
+        syndrome: getField(section, "证型") || getField(section, "主证"),
+        pattern: getField(section, "病机") || getField(section, "核心病机"),
+        treatment: getField(section, "治法"),
+        composition: getField(section, "组成"),
+        dosage: getField(section, "常用成人剂量参考"),
+        usage: getField(section, "煎服法"),
+        formulaMeaning: getField(section, "方义"),
+        keyPoints: getField(section, "辨证重点") || getField(section, "辨证抓手") || getField(section, "使用抓手"),
+        differentiation: getField(section, "鉴别"),
+        warnings: getField(section, "误用提醒") || getField(section, "临床提醒"),
+        notes: getField(section, "条辨"),
+        raw: section.trim()
+      };
+      item.keywords = buildKeywords(item);
+      cards.push(item);
+    });
+  });
+
+  const byName = new Map();
+  cards.forEach((item) => {
+    const previous = byName.get(item.name);
+    if (!previous || (item.raw || "").length > (previous.raw || "").length) byName.set(item.name, item);
+  });
+  return [...byName.values()];
 }
 
 function getLineValue(text, label) {
@@ -88,28 +166,49 @@ function getLineValue(text, label) {
   return match ? match[1].trim() : "";
 }
 
-function detectCategory(scope) {
-  if (scope.includes("太阳")) return "太阳病";
-  if (scope.includes("阳明")) return "阳明病";
-  if (scope.includes("少阳")) return "少阳病";
-  if (scope.includes("太阴")) return "太阴病";
-  if (scope.includes("少阴")) return "少阴病";
-  if (scope.includes("厥阴")) return "厥阴病";
-  if (scope.includes("霍乱") || scope.includes("劳复") || scope.includes("阴阳易")) return "霍乱与差后劳复";
-  return "伤寒论专题";
+function getField(section, label) {
+  const match = section.match(new RegExp(`【${label}】\\s*([\\s\\S]*?)(?=\\n【[^】]+】|$)`));
+  return match ? cleanText(match[1]) : "";
 }
 
-function extractKeywords(scope) {
-  return scope.split(/[·、，,]/).map((part) => part.trim()).filter(Boolean).slice(0, 8);
+function cleanText(value) {
+  return value.trim().replace(/\n{3,}/g, "\n\n");
 }
 
-function summarizeScope(scope) {
-  return `${scope}的条文、证候、病机、治法、方剂、方义与鉴别整理。`;
+function sectionHeading(section) {
+  for (const line of section.split("\n")) {
+    const value = line.trim();
+    if (value && !value.startsWith("【") && !/^=+$/.test(value)) {
+      return value.replace(/^[一二三四五六七八九十百〇零]+[、.．]?/, "");
+    }
+  }
+  return "";
+}
+
+function detectCategory(value) {
+  for (const key of ["太阳", "阳明", "少阳", "太阴", "少阴", "厥阴"]) {
+    if (value.includes(key)) return `${key}病`;
+  }
+  if (value.includes("霍乱")) return "霍乱病";
+  if (value.includes("劳复") || value.includes("阴阳易")) return "差后劳复与阴阳易";
+  return "伤寒论";
+}
+
+function makeId(name) {
+  return `formula-${[...name].map((char) => char.charCodeAt(0).toString(16)).join("-")}`;
+}
+
+function buildKeywords(item) {
+  return [item.name, item.category, item.sourceTopic, item.syndrome, item.pattern, item.treatment]
+    .join("、")
+    .split(/[、，,。\s]+/)
+    .filter((value, index, list) => value && list.indexOf(value) === index)
+    .slice(0, 18);
 }
 
 function renderFilters() {
   renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略"], "book");
-  const categories = ["全部", ...new Set([...datasets.articles, ...datasets.formulas, ...datasets.jingui].map((item) => item.category).filter(Boolean))];
+  const categories = ["全部", ...new Set([...datasets.formulas, ...datasets.jingui].map((item) => item.category).filter(Boolean))];
   renderChips(els.categoryFilters, categories, "category");
 }
 
@@ -119,19 +218,18 @@ function renderChips(container, values, key) {
 
 function renderAll() {
   const query = els.search.value.trim().toLowerCase();
-  const articles = applyFilters(datasets.articles, query);
   const formulas = applyFilters(datasets.formulas, query);
   const jingui = applyFilters(datasets.jingui, query);
-  renderArticleCards(articles);
+
   renderFormulaCards(formulas);
   renderClauseList(els.jinguiGrid, jingui, "金匮要略");
-  els.articleCount.textContent = articles.length;
+
   els.formulaCount.textContent = formulas.length;
+  els.sourceCount.textContent = new Set(datasets.formulas.map((item) => item.sourceTopic).filter(Boolean)).size;
   els.jinguiCount.textContent = jingui.length;
-  els.articlesHint.textContent = articles.length ? `共 ${articles.length} 个专题。` : "当前筛选没有专题。";
-  els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂。` : "当前筛选没有方剂。";
+  els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，点击卡片查看详情。` : "当前筛选没有方剂。";
   els.jinguiHint.textContent = jingui.length ? `共 ${jingui.length} 条金匮要略条文。` : "当前筛选没有金匮要略条文。";
-  els.empty.hidden = articles.length + formulas.length + jingui.length > 0;
+  els.empty.hidden = formulas.length + jingui.length > 0;
 }
 
 function applyFilters(items, query) {
@@ -144,27 +242,21 @@ function applyFilters(items, query) {
 }
 
 function searchableText(item) {
-  return [item.title, item.name, item.formula, item.number, item.text, item.book, item.source, item.category, item.volume, item.pattern, item.summary, item.symptoms, item.keywords, item.formulas, item.clauses, item.content].flat().filter(Boolean).join(" ").toLowerCase();
-}
-
-function renderArticleCards(items) {
-  els.articlesGrid.innerHTML = items.map((item) => `
-    <button class="library-card article-card" type="button" data-kind="article" data-id="${escapeHtml(item.id)}">
-      <div class="tag-row">${tag(item.book)}${tag(item.category)}${tag(item.volume)}</div>
-      <h3>${escapeHtml(item.title)}</h3>
-      <p>${escapeHtml(item.summary || "")}</p>
-      <div class="card-footer"><span>${escapeHtml((item.keywords || []).slice(0, 3).join("、"))}</span><span>阅读全文</span></div>
-    </button>
-  `).join("");
+  return [
+    item.title, item.name, item.formula, item.number, item.text, item.book, item.source,
+    item.category, item.volume, item.sourceTopic, item.sixChannel, item.syndrome,
+    item.pattern, item.treatment, item.summary, item.symptoms, item.keywords,
+    item.formulas, item.clauses, item.raw
+  ].flat().filter(Boolean).join(" ").toLowerCase();
 }
 
 function renderFormulaCards(items) {
   els.formulasGrid.innerHTML = items.map((item) => `
     <button class="library-card" type="button" data-kind="formula" data-id="${escapeHtml(item.id)}">
-      <div class="tag-row">${tag(item.source)}${tag(item.category)}</div>
+      <div class="tag-row">${tag(item.source)}${tag(item.category)}${tag(item.volume)}</div>
       <h3>${escapeHtml(item.name)}</h3>
-      <p>${escapeHtml(item.pattern || item.indications || item.notes || "")}</p>
-      <div class="card-footer"><span>${escapeHtml(formatList(item.clauses) || "条文待补")}</span><span>查看详情</span></div>
+      <p>${escapeHtml(item.syndrome || item.pattern || item.notes || "")}</p>
+      <div class="card-footer"><span>${escapeHtml(item.treatment || item.sourceTopic || "方证详情")}</span><span>查看详情</span></div>
     </button>
   `).join("");
 }
@@ -183,29 +275,31 @@ function tag(value) {
   return value ? `<span class="tag">${escapeHtml(String(value))}</span>` : "";
 }
 
-async function openDetail(kind, id) {
-  const sourceKey = kind === "formula" ? "formulas" : kind === "article" ? "articles" : "jingui";
+function openDetail(kind, id) {
+  const sourceKey = kind === "formula" ? "formulas" : "jingui";
   const item = datasets[sourceKey].find((entry) => entry.id === id);
   if (!item) return;
   const title = item.name || item.title || `${item.book || ""} ${item.number || ""}`.trim();
   els.modalCategory.textContent = kind === "formula" ? "方剂" : item.book;
   els.modalTitle.textContent = title;
   els.modalTags.innerHTML = [item.source, item.book, item.category, item.volume, ...(item.keywords || [])].filter(Boolean).map(tag).join("");
-  els.modalDetails.innerHTML = kind === "article" ? buildArticleDetails(item) : buildDetails(item);
+  els.modalDetails.innerHTML = buildDetails(item);
   els.modal.hidden = false;
   document.body.style.overflow = "hidden";
 }
 
-function buildArticleDetails(item) {
-  return `${buildDetails(item, ["content"])}<div class="article-body">${escapeHtml(item.content || "正文暂未上传。")}</div>`;
-}
-
-function buildDetails(item, extraHidden = []) {
-  const hidden = new Set(["id", "name", "title", "type", ...extraHidden]);
+function buildDetails(item) {
+  const hidden = new Set(["id", "name", "title", "type", "raw"]);
   const keys = [...detailOrder, ...Object.keys(item).filter((key) => !detailOrder.includes(key))];
-  return keys.filter((key) => !hidden.has(key)).filter((key) => hasValue(item[key])).map((key) => `
-    <div class="detail-item"><div class="detail-label">${escapeHtml(labels[key] || key)}</div><p class="detail-value">${escapeHtml(formatList(item[key]))}</p></div>
-  `).join("");
+  return keys
+    .filter((key) => !hidden.has(key))
+    .filter((key) => hasValue(item[key]))
+    .map((key) => `
+      <div class="detail-item">
+        <div class="detail-label">${escapeHtml(labels[key] || key)}</div>
+        <p class="detail-value">${escapeHtml(formatList(item[key]))}</p>
+      </div>
+    `).join("");
 }
 
 function hasValue(value) {
@@ -233,15 +327,18 @@ document.addEventListener("click", (event) => {
     renderAll();
     return;
   }
+
   const card = event.target.closest("[data-kind][data-id]");
   if (card) {
     openDetail(card.dataset.kind, card.dataset.id);
     return;
   }
+
   if (event.target.matches("[data-close-modal]")) closeModal();
 });
 
 els.search.addEventListener("input", renderAll);
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !els.modal.hidden) closeModal();
 });
