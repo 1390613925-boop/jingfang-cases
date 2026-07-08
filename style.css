@@ -201,6 +201,36 @@ h1 {
 
 .card-grid {
   display: grid;
+  gap: 26px;
+}
+
+.formula-group {
+  display: grid;
+  gap: 14px;
+}
+
+.formula-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+
+.formula-group-head h3 {
+  margin: 0;
+  color: var(--green);
+  font-size: 22px;
+}
+
+.formula-group-head span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.formula-group-grid {
+  display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 18px;
 }
@@ -455,7 +485,7 @@ h1 {
 
 @media (max-width: 900px) {
   .summary-row,
-  .card-grid {
+  .formula-group-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -466,7 +496,7 @@ h1 {
   }
 
   .summary-row,
-  .card-grid {
+  .formula-group-grid {
     grid-template-columns: 1fr;
   }
 
