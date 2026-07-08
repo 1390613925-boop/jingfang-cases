@@ -10,6 +10,122 @@ const filters = {
 
 const formulaCategoryOrder = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "霍乱病", "差后劳复与阴阳易", "伤寒论"];
 
+const shanghan113Rows = `
+太阳病|白虎加人参汤
+太阳病|甘草干姜汤
+太阳病|桂枝二麻黄一汤
+太阳病|桂枝二越婢一汤
+太阳病|桂枝加附子汤
+太阳病|桂枝加葛根汤
+太阳病|桂枝麻黄各半汤
+太阳病|桂枝去桂加茯苓白术汤
+太阳病|桂枝去芍药加附子汤
+太阳病|桂枝去芍药汤
+太阳病|桂枝汤
+太阳病|桂枝加厚朴杏子汤
+太阳病|芍药甘草汤
+太阳病|四逆汤
+少阳病|柴胡加龙骨牡蛎汤
+少阳病|柴胡加芒硝汤
+少阳病|大柴胡汤
+太阳病|大青龙汤
+太阳病|抵当汤
+太阳病|抵当丸
+太阳病|茯苓甘草汤
+太阳病|茯苓桂枝白术甘草汤
+太阳病|茯苓桂枝甘草大枣汤
+太阳病|茯苓四逆汤
+太阳病|干姜附子汤
+太阳病|葛根黄芩黄连汤
+太阳病|葛根加半夏汤
+太阳病|葛根汤
+太阳病|桂枝甘草龙骨牡蛎汤
+太阳病|桂枝甘草汤
+太阳病|桂枝加桂汤
+太阳病|桂枝新加汤
+太阳病|桂枝去芍药加蜀漆牡蛎龙骨救逆汤
+太阴病|厚朴生姜半夏甘草人参汤
+太阳病|麻黄汤
+太阳病|麻黄杏仁甘草石膏汤
+太阳病|芍药甘草附子汤
+太阳病|桃核承气汤
+阳明病|调胃承气汤
+太阳病|五苓散
+少阳病|小柴胡汤
+太阴病|小建中汤
+太阳病|小青龙汤
+太阳病|禹余粮丸
+少阴病|真武汤
+太阳病|栀子豉汤
+太阳病|栀子甘草豉汤
+太阳病|栀子干姜汤
+太阳病|栀子厚朴汤
+太阳病|栀子生姜豉汤
+阳明病|白虎汤
+太阳病|三物白散
+太阳病|半夏泻心汤
+少阳病|柴胡桂枝干姜汤
+少阳病|柴胡桂枝汤
+太阳病|赤石脂禹余粮汤
+太阳病|大黄黄连泻心汤
+太阳病|大陷胸汤
+太阳病|大陷胸丸
+太阳病|附子泻心汤
+太阳病|甘草附子汤
+太阳病|甘草泻心汤
+太阳病|瓜蒂散
+太阳病|桂枝附子汤
+太阴病|桂枝人参汤
+太阳病|黄连汤
+太阳病|黄芩加半夏生姜汤
+太阳病|黄芩汤
+太阳病|去桂加白术汤
+太阳病|生姜泻心汤
+太阳病|十枣汤
+太阳病|文蛤散
+太阳病|小陷胸汤
+太阳病|旋覆代赭汤
+太阳病|炙甘草汤
+阳明病|大承气汤
+阳明病|麻黄连轺赤小豆汤
+阳明病|麻子仁丸
+阳明病|蜜煎
+阳明病|吴茱萸汤
+阳明病|小承气汤
+阳明病|茵陈蒿汤
+阳明病|栀子柏皮汤
+阳明病|猪苓汤
+太阴病|桂枝加大黄汤
+太阴病|桂枝加芍药汤
+少阴病|白通加猪胆汁汤
+少阴病|白通汤
+少阴病|半夏散及汤
+少阴病|附子汤
+少阴病|甘草汤
+少阴病|黄连阿胶汤
+少阴病|桔梗汤
+少阴病|苦酒汤
+少阴病|麻黄附子甘草汤
+少阴病|麻黄附子细辛汤
+少阴病|四逆散
+少阴病|桃花汤
+少阴病|通脉四逆汤
+少阴病|猪肤汤
+厥阴病|白头翁汤
+厥阴病|当归四逆加吴茱萸生姜汤
+厥阴病|当归四逆汤
+厥阴病|干姜黄芩黄连人参汤
+厥阴病|麻黄升麻汤
+厥阴病|乌梅丸
+霍乱病|理中丸
+霍乱病|四逆加人参汤
+霍乱病|通脉四逆加猪胆汁汤
+差后劳复与阴阳易|牡蛎泽泻散
+差后劳复与阴阳易|烧裈散
+差后劳复与阴阳易|枳实栀子豉汤
+差后劳复与阴阳易|竹叶石膏汤
+`.trim();
+
 const els = {
   search: document.querySelector("#siteSearch"),
   empty: document.querySelector("#emptyState"),
@@ -54,7 +170,9 @@ const labels = {
   differentiation: "鉴别",
   warnings: "提醒",
   indications: "主治",
-  notes: "条辨 / 按语"
+  notes: "条辨 / 按语",
+  status: "整理状态",
+  standardIndex: "113方序号"
 };
 
 const detailOrder = [
@@ -77,6 +195,8 @@ const detailOrder = [
   "warnings",
   "indications",
   "notes",
+  "status",
+  "standardIndex",
   "keywords"
 ];
 
@@ -158,18 +278,61 @@ async function appendSupplementalArticles(raw) {
 
 function mergeFormulas(parsed, legacy) {
   const byName = new Map();
+  const standardFormulas = getStandardFormulas();
+  const standardNames = new Set(standardFormulas.map((item) => item.name));
+
+  standardFormulas.forEach((item) => {
+    byName.set(item.name, item);
+  });
+
   legacy.forEach((item) => {
     normalizeFormulaNames(item.name || "").forEach((name, index) => {
-      if (name) byName.set(name, normalizeLegacyFormula(item, name, index));
+      const canonicalName = canonicalizeFormulaName(name);
+      if (standardNames.has(canonicalName)) {
+        byName.set(canonicalName, mergeFormulaCard(byName.get(canonicalName), normalizeLegacyFormula(item, canonicalName, index)));
+      }
     });
   });
   parsed.forEach((item) => {
-    byName.set(item.name, item);
+    const canonicalName = canonicalizeFormulaName(item.name);
+    if (standardNames.has(canonicalName)) {
+      byName.set(canonicalName, mergeFormulaCard(byName.get(canonicalName), { ...item, name: canonicalName, status: "已整理" }));
+    }
   });
   return [...byName.values()].sort((a, b) => {
     const rank = getCategoryRank(a.category) - getCategoryRank(b.category);
     return rank || `${a.category}${a.name}`.localeCompare(`${b.category}${b.name}`, "zh-Hans-CN");
   });
+}
+
+function getStandardFormulas() {
+  return shanghan113Rows.split("\n").map((row, index) => {
+    const [category, name] = row.split("|");
+    return {
+      id: makeId(`standard-${name}`),
+      name,
+      book: "伤寒论",
+      source: "伤寒论",
+      type: "formula",
+      category,
+      sourceTopic: "《伤寒论》113方底表",
+      status: "待补条辨",
+      notes: "已列入《伤寒论》113方底表，详细条文、组成、方义与鉴别待继续整理补充。",
+      keywords: [name, category, "113方", "待补条辨"],
+      standardIndex: index + 1
+    };
+  });
+}
+
+function mergeFormulaCard(base, incoming) {
+  return {
+    ...base,
+    ...incoming,
+    id: base?.id || incoming.id,
+    category: incoming.category || base?.category,
+    sourceTopic: incoming.sourceTopic || base?.sourceTopic,
+    status: incoming.status || base?.status
+  };
 }
 
 function normalizeLegacyFormula(item, name = item.name, index = 0) {
@@ -185,7 +348,8 @@ function normalizeLegacyFormula(item, name = item.name, index = 0) {
     formulaMeaning: item.formulaMeaning || "",
     keyPoints: item.keyPoints || "",
     sourceTopic: item.sourceTopic || item.category || "",
-    keywords: item.keywords || [item.name, item.category].filter(Boolean)
+    keywords: item.keywords || [item.name, item.category].filter(Boolean),
+    status: "已整理"
   };
 }
 
@@ -251,7 +415,7 @@ function getFormulaSections(text) {
   const starts = nameMatches.map((match, index) => {
     const nameAt = match.index;
     const previousNameAt = index > 0 ? nameMatches[index - 1].index : 0;
-    const clauseAt = text.lastIndexOf("【条文】", nameAt);
+    const clauseAt = text.lastIndexOf("【条文", nameAt);
     if (clauseAt > previousNameAt) return clauseAt;
     const separatorAt = text.lastIndexOf("============================================================", nameAt);
     return separatorAt > previousNameAt ? separatorAt : previousNameAt;
@@ -278,6 +442,28 @@ function normalizeFormulaNames(value) {
     .split(/\r?\n+/)
     .map((name) => name.replace(/[。；;]+$/g, "").replace(/[，,](简称|又名).*$/g, "").trim())
     .filter(Boolean);
+}
+
+function canonicalizeFormulaName(name) {
+  const cleaned = name
+    .replace(/[。；;]+$/g, "")
+    .replace(/[，,](简称|又名).*$/g, "")
+    .trim();
+  const aliases = {
+    "麻杏甘石汤": "麻黄杏仁甘草石膏汤",
+    "麻黄杏子甘草石膏汤": "麻黄杏仁甘草石膏汤",
+    "苓桂甘枣汤": "茯苓桂枝甘草大枣汤",
+    "桂枝汤加厚朴杏子": "桂枝加厚朴杏子汤",
+    "桂枝加芍药生姜各一两人参三两新加汤": "桂枝新加汤",
+    "桂枝去芍药加蜀漆龙骨牡蛎救逆汤": "桂枝去芍药加蜀漆牡蛎龙骨救逆汤",
+    "白散": "三物白散",
+    "复脉汤": "炙甘草汤",
+    "麻黄细辛附子汤": "麻黄附子细辛汤",
+    "白通加猪胆汤": "白通加猪胆汁汤",
+    "蜜煎导法": "蜜煎",
+    "理中汤": "理中丸"
+  };
+  return aliases[cleaned] || cleaned;
 }
 
 function cleanText(value) {
@@ -408,7 +594,7 @@ function groupByCategory(items) {
 function formulaCard(item) {
   return `
     <button class="library-card" type="button" data-kind="formula" data-id="${escapeHtml(item.id)}">
-      <div class="tag-row">${tag(item.source)}${tag(item.category)}${tag(item.volume)}</div>
+      <div class="tag-row">${tag(item.source)}${tag(item.category)}${tag(item.volume)}${tag(item.status)}</div>
       <h3>${escapeHtml(item.name)}</h3>
       <p>${escapeHtml(item.syndrome || item.pattern || item.notes || "")}</p>
       <div class="card-footer"><span>${escapeHtml(item.treatment || item.sourceTopic || "方证详情")}</span><span>查看详情</span></div>
