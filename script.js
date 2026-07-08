@@ -8,6 +8,8 @@ const filters = {
   category: "全部"
 };
 
+const formulaCategoryOrder = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "霍乱病", "差后劳复与阴阳易", "伤寒论"];
+
 const els = {
   search: document.querySelector("#siteSearch"),
   empty: document.querySelector("#emptyState"),
@@ -55,14 +57,36 @@ const labels = {
   notes: "条辨 / 按语"
 };
 
-const detailOrder = ["book", "source", "category", "volume", "sourceTopic", "clauses", "sixChannel", "syndrome", "pattern", "treatment", "composition", "dosage", "usage", "formulaMeaning", "keyPoints", "differentiation", "warnings", "indications", "notes", "keywords"];
+const detailOrder = [
+  "book",
+  "source",
+  "category",
+  "volume",
+  "sourceTopic",
+  "clauses",
+  "sixChannel",
+  "syndrome",
+  "pattern",
+  "treatment",
+  "composition",
+  "dosage",
+  "usage",
+  "formulaMeaning",
+  "keyPoints",
+  "differentiation",
+  "warnings",
+  "indications",
+  "notes",
+  "keywords"
+];
 
 async function loadData() {
   const [articleText, legacyFormulas, jingui] = await Promise.all([
-    fetchText("./data/articles.json"),
+    loadArticleCorpus(),
     fetchJson("./data/formulas.json").catch(() => []),
     fetchJson("./data/jingui-clauses.json")
   ]);
+
   datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas);
   datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略", type: "jingui" }));
   renderFilters();
@@ -81,18 +105,78 @@ async function fetchText(path) {
   return response.text();
 }
 
+async function loadArticleCorpus() {
+  const raw = await fetchText("./data/articles.json");
+  try {
+    const index = JSON.parse(raw);
+    if (!Array.isArray(index)) return raw;
+    const parts = await Promise.all(index.map(async (article) => {
+      if (!article.path) return "";
+      const body = await fetchText(article.path);
+      return [
+        `文件名：${article.title || article.id || article.path}`,
+        `卷次：${article.volume || ""}`,
+        `范围：${article.category || article.title || ""}`,
+        "",
+        body
+      ].join("\n");
+    }));
+    return parts.filter(Boolean).join("\n\n");
+  } catch (error) {
+    return appendSupplementalArticles(raw);
+  }
+}
+
+async function appendSupplementalArticles(raw) {
+  const supplemental = [
+    {
+      title: "太阳病篇：麻黄汤系、大小青龙汤系、麻杏石甘汤系",
+      volume: "第二卷",
+      category: "太阳病",
+      path: "./data/articles/sh-taiyang-mahuang.txt"
+    }
+  ];
+
+  const parts = await Promise.all(supplemental.map(async (article) => {
+    try {
+      const body = await fetchText(article.path);
+      if (raw.includes(body.slice(0, 80))) return "";
+      return [
+        `文件名：${article.title}`,
+        `卷次：${article.volume}`,
+        `范围：${article.category}`,
+        "",
+        body
+      ].join("\n");
+    } catch (error) {
+      return "";
+    }
+  }));
+
+  return [raw, ...parts.filter(Boolean)].join("\n\n");
+}
+
 function mergeFormulas(parsed, legacy) {
   const byName = new Map();
   legacy.forEach((item) => {
-    if (item.name) byName.set(item.name, normalizeLegacyFormula(item));
+    normalizeFormulaNames(item.name || "").forEach((name, index) => {
+      if (name) byName.set(name, normalizeLegacyFormula(item, name, index));
+    });
   });
-  parsed.forEach((item) => byName.set(item.name, item));
-  return [...byName.values()].sort((a, b) => `${a.category}${a.name}`.localeCompare(`${b.category}${b.name}`, "zh-Hans-CN"));
+  parsed.forEach((item) => {
+    byName.set(item.name, item);
+  });
+  return [...byName.values()].sort((a, b) => {
+    const rank = getCategoryRank(a.category) - getCategoryRank(b.category);
+    return rank || `${a.category}${a.name}`.localeCompare(`${b.category}${b.name}`, "zh-Hans-CN");
+  });
 }
 
-function normalizeLegacyFormula(item) {
+function normalizeLegacyFormula(item, name = item.name, index = 0) {
   return {
     ...item,
+    id: item.id ? `${item.id}-${index}` : makeId(name),
+    name,
     book: item.source || "伤寒论",
     source: item.source || "伤寒论",
     type: "formula",
@@ -108,14 +192,17 @@ function normalizeLegacyFormula(item) {
 function parseFormulaCards(raw) {
   const textParts = raw.split(/(?=文件名：)/).filter((part) => part.includes("【方名】"));
   const cards = [];
+
   textParts.forEach((textPart) => {
     const volume = getLineValue(textPart, "卷次");
     const sourceTopic = getLineValue(textPart, "范围");
-    const sections = textPart.split(/\n={20,}\n/).filter((section) => section.includes("【方名】"));
+    const sections = getFormulaSections(textPart);
+
     sections.forEach((section, index) => {
       const names = normalizeFormulaNames(getField(section, "方名"));
       if (!names.length) return;
-      const category = detectCategory(sourceTopic + section);
+      const category = detectCategory(sourceTopic) || detectCategory(section) || "伤寒论";
+
       names.forEach((name, nameIndex) => {
         const item = {
           id: makeId(`${name}-${index}-${nameIndex}`),
@@ -147,12 +234,33 @@ function parseFormulaCards(raw) {
       });
     });
   });
+
   const byName = new Map();
   cards.forEach((item) => {
     const previous = byName.get(item.name);
-    if (!previous || (item.raw || "").length > (previous.raw || "").length) byName.set(item.name, item);
+    if (!previous || (item.raw || "").length > (previous.raw || "").length) {
+      byName.set(item.name, item);
+    }
   });
   return [...byName.values()];
+}
+
+function getFormulaSections(text) {
+  const nameMatches = [...text.matchAll(/【方名】/g)];
+  if (!nameMatches.length) return [];
+  const starts = nameMatches.map((match, index) => {
+    const nameAt = match.index;
+    const previousNameAt = index > 0 ? nameMatches[index - 1].index : 0;
+    const clauseAt = text.lastIndexOf("【条文】", nameAt);
+    if (clauseAt > previousNameAt) return clauseAt;
+    const separatorAt = text.lastIndexOf("============================================================", nameAt);
+    return separatorAt > previousNameAt ? separatorAt : previousNameAt;
+  });
+
+  return starts.map((start, index) => {
+    const end = starts[index + 1] || text.length;
+    return text.slice(start, end).trim();
+  }).filter((section, index, list) => section.includes("【方名】") && list.indexOf(section) === index);
 }
 
 function getLineValue(text, label) {
@@ -166,17 +274,22 @@ function getField(section, label) {
 }
 
 function normalizeFormulaNames(value) {
-  return value.split(/\n+/).map((name) => name.replace(/[。；;]+$/g, "").replace(/，简称.*$/g, "").trim()).filter(Boolean);
+  return value
+    .split(/\r?\n+/)
+    .map((name) => name.replace(/[。；;]+$/g, "").replace(/[，,](简称|又名).*$/g, "").trim())
+    .filter(Boolean);
 }
 
 function cleanText(value) {
-  return value.trim().replace(/\n{3,}/g, "\n\n");
+  return value.replace(/\r/g, "").trim().replace(/\n{3,}/g, "\n\n");
 }
 
 function sectionHeading(section) {
   for (const line of section.split("\n")) {
     const value = line.trim();
-    if (value && !value.startsWith("【") && !/^=+$/.test(value)) return value.replace(/^[一二三四五六七八九十百〇零]+[、.．]?/, "");
+    if (value && !value.startsWith("【") && !/^=+$/.test(value)) {
+      return value.replace(/^[一二三四五六七八九十百〇零]+[、.．]?/, "");
+    }
   }
   return "";
 }
@@ -187,7 +300,12 @@ function detectCategory(value) {
   }
   if (value.includes("霍乱")) return "霍乱病";
   if (value.includes("劳复") || value.includes("阴阳易")) return "差后劳复与阴阳易";
-  return "伤寒论";
+  return "";
+}
+
+function getCategoryRank(category = "") {
+  const index = formulaCategoryOrder.findIndex((item) => item === category || category.includes(item.replace(/病$/, "")));
+  return index === -1 ? formulaCategoryOrder.length : index;
 }
 
 function makeId(name) {
@@ -195,7 +313,13 @@ function makeId(name) {
 }
 
 function buildKeywords(item) {
-  return [item.name, item.category, item.syndrome, item.pattern, item.treatment].join("、").split(/[、，,。\s]+/).filter((value, index, list) => value && list.indexOf(value) === index).slice(0, 18);
+  return [
+    item.name,
+    item.category,
+    item.syndrome,
+    item.pattern,
+    item.treatment
+  ].join("、").split(/[、，,。\s]+/).filter((value, index, list) => value && list.indexOf(value) === index).slice(0, 18);
 }
 
 function renderFilters() {
@@ -212,8 +336,10 @@ function renderAll() {
   const query = els.search.value.trim().toLowerCase();
   const formulas = applyFilters(datasets.formulas, query);
   const jingui = applyFilters(datasets.jingui, query);
+
   renderFormulaCards(formulas);
   renderClauseList(els.jinguiGrid, jingui, "金匮要略");
+
   els.formulaCount.textContent = formulas.length;
   els.sourceCount.textContent = new Set(datasets.formulas.map((item) => item.sourceTopic).filter(Boolean)).size;
   els.jinguiCount.textContent = jingui.length;
@@ -232,18 +358,62 @@ function applyFilters(items, query) {
 }
 
 function searchableText(item) {
-  return [item.title, item.name, item.formula, item.number, item.text, item.book, item.source, item.category, item.volume, item.sixChannel, item.syndrome, item.pattern, item.treatment, item.summary, item.symptoms, item.keywords, item.formulas, item.clauses].flat().filter(Boolean).join(" ").toLowerCase();
+  return [
+    item.title,
+    item.name,
+    item.formula,
+    item.number,
+    item.text,
+    item.book,
+    item.source,
+    item.category,
+    item.volume,
+    item.sixChannel,
+    item.syndrome,
+    item.pattern,
+    item.treatment,
+    item.summary,
+    item.symptoms,
+    item.keywords,
+    item.formulas,
+    item.clauses
+  ].flat().filter(Boolean).join(" ").toLowerCase();
 }
 
 function renderFormulaCards(items) {
-  els.formulasGrid.innerHTML = items.map((item) => `
+  const groups = groupByCategory(items);
+  els.formulasGrid.innerHTML = groups.map(([category, formulas]) => `
+    <section class="formula-group" aria-labelledby="group-${makeId(category)}">
+      <div class="formula-group-head">
+        <h3 id="group-${makeId(category)}">${escapeHtml(category)}</h3>
+        <span>${formulas.length} 首</span>
+      </div>
+      <div class="formula-group-grid">
+        ${formulas.map(formulaCard).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+function groupByCategory(items) {
+  const byCategory = new Map();
+  items.forEach((item) => {
+    const category = item.category || "未分经";
+    if (!byCategory.has(category)) byCategory.set(category, []);
+    byCategory.get(category).push(item);
+  });
+  return [...byCategory.entries()].sort((a, b) => getCategoryRank(a[0]) - getCategoryRank(b[0]));
+}
+
+function formulaCard(item) {
+  return `
     <button class="library-card" type="button" data-kind="formula" data-id="${escapeHtml(item.id)}">
       <div class="tag-row">${tag(item.source)}${tag(item.category)}${tag(item.volume)}</div>
       <h3>${escapeHtml(item.name)}</h3>
       <p>${escapeHtml(item.syndrome || item.pattern || item.notes || "")}</p>
       <div class="card-footer"><span>${escapeHtml(item.treatment || item.sourceTopic || "方证详情")}</span><span>查看详情</span></div>
     </button>
-  `).join("");
+  `;
 }
 
 function renderClauseList(container, items, book) {
@@ -276,7 +446,10 @@ function openDetail(kind, id) {
 function buildDetails(item) {
   const hidden = new Set(["id", "name", "title", "type", "raw"]);
   const keys = [...detailOrder, ...Object.keys(item).filter((key) => !detailOrder.includes(key))];
-  return keys.filter((key) => !hidden.has(key)).filter((key) => hasValue(item[key])).map((key) => `
+  return keys
+    .filter((key) => !hidden.has(key))
+    .filter((key) => hasValue(item[key]))
+    .map((key) => `
       <div class="detail-item">
         <div class="detail-label">${escapeHtml(labels[key] || key)}</div>
         <p class="detail-value">${escapeHtml(formatList(item[key]))}</p>
@@ -309,11 +482,13 @@ document.addEventListener("click", (event) => {
     renderAll();
     return;
   }
+
   const card = event.target.closest("[data-kind][data-id]");
   if (card) {
     openDetail(card.dataset.kind, card.dataset.id);
     return;
   }
+
   if (event.target.matches("[data-close-modal]")) closeModal();
 });
 
