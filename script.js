@@ -1,6 +1,7 @@
 const datasets = {
   formulas: [],
-  jingui: []
+  jingui: [],
+  cases: []
 };
 
 const filters = {
@@ -131,11 +132,14 @@ const els = {
   empty: document.querySelector("#emptyState"),
   formulasGrid: document.querySelector("#formulasGrid"),
   jinguiGrid: document.querySelector("#jinguiGrid"),
+  casesGrid: document.querySelector("#casesGrid"),
   formulaCount: document.querySelector("#formulaCount"),
   sourceCount: document.querySelector("#sourceCount"),
   jinguiCount: document.querySelector("#jinguiCount"),
+  caseCount: document.querySelector("#caseCount"),
   formulasHint: document.querySelector("#formulasHint"),
   jinguiHint: document.querySelector("#jinguiHint"),
+  casesHint: document.querySelector("#casesHint"),
   bookFilters: document.querySelector("#bookFilters"),
   categoryFilters: document.querySelector("#categoryFilters"),
   modal: document.querySelector("#detailModal"),
@@ -148,6 +152,8 @@ const els = {
 const labels = {
   book: "经典",
   source: "出处",
+  sourceUrl: "原文链接",
+  date: "日期",
   category: "六经 / 篇章",
   volume: "卷次",
   sourceTopic: "整理范围",
@@ -171,6 +177,8 @@ const labels = {
   warnings: "提醒",
   indications: "主治",
   notes: "条辨 / 按语",
+  summary: "摘要",
+  content: "医案正文",
   status: "整理状态",
   standardIndex: "113方序号"
 };
@@ -181,6 +189,9 @@ const detailOrder = [
   "category",
   "volume",
   "sourceTopic",
+  "date",
+  "sourceUrl",
+  "summary",
   "clauses",
   "sixChannel",
   "syndrome",
@@ -195,20 +206,23 @@ const detailOrder = [
   "warnings",
   "indications",
   "notes",
+  "content",
   "status",
   "standardIndex",
   "keywords"
 ];
 
 async function loadData() {
-  const [articleText, legacyFormulas, jingui] = await Promise.all([
+  const [articleText, legacyFormulas, jingui, cases] = await Promise.all([
     loadArticleCorpus(),
     fetchJson("./data/formulas.json").catch(() => []),
-    fetchJson("./data/jingui-clauses.json")
+    fetchJson("./data/jingui-clauses.json"),
+    fetchJson("./data/cases.json").catch(() => [])
   ]);
 
   datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas);
   datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略", type: "jingui" }));
+  datasets.cases = cases.map(normalizeCase);
   renderFilters();
   renderAll();
 }
@@ -223,6 +237,19 @@ async function fetchText(path) {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`无法读取 ${path}`);
   return response.text();
+}
+
+function normalizeCase(item) {
+  return {
+    ...item,
+    book: item.book || "倪师医案",
+    source: item.source || "医案资料",
+    category: item.category || "倪师医案",
+    type: "case",
+    title: item.title || item.name || "未命名医案",
+    keywords: item.keywords || [item.title, item.formula, item.pattern, item.category].filter(Boolean),
+    symptoms: item.symptoms || []
+  };
 }
 
 async function loadArticleCorpus() {
@@ -509,8 +536,8 @@ function buildKeywords(item) {
 }
 
 function renderFilters() {
-  renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略"], "book");
-  const categories = ["全部", ...new Set([...datasets.formulas, ...datasets.jingui].map((item) => item.category).filter(Boolean))];
+  renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略", "倪师医案"], "book");
+  const categories = ["全部", ...new Set([...datasets.formulas, ...datasets.jingui, ...datasets.cases].map((item) => item.category).filter(Boolean))];
   renderChips(els.categoryFilters, categories, "category");
 }
 
@@ -519,19 +546,23 @@ function renderChips(container, values, key) {
 }
 
 function renderAll() {
-  const query = els.search.value.trim().toLowerCase();
+  const query = normalizeForSearch(els.search.value.trim());
   const formulas = applyFilters(datasets.formulas, query);
   const jingui = applyFilters(datasets.jingui, query);
+  const cases = applyFilters(datasets.cases, query);
 
   renderFormulaCards(formulas);
   renderClauseList(els.jinguiGrid, jingui, "金匮要略");
+  renderCaseCards(cases);
 
   els.formulaCount.textContent = formulas.length;
   els.sourceCount.textContent = new Set(datasets.formulas.map((item) => item.sourceTopic).filter(Boolean)).size;
   els.jinguiCount.textContent = jingui.length;
+  els.caseCount.textContent = cases.length;
   els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，点击卡片查看详情。` : "当前筛选没有方剂。";
   els.jinguiHint.textContent = jingui.length ? `共 ${jingui.length} 条金匮要略条文。` : "当前筛选没有金匮要略条文。";
-  els.empty.hidden = formulas.length + jingui.length > 0;
+  els.casesHint.textContent = cases.length ? `共 ${cases.length} 篇医案，点击卡片查看全文。` : "当前筛选没有医案。";
+  els.empty.hidden = formulas.length + jingui.length + cases.length > 0;
 }
 
 function applyFilters(items, query) {
@@ -544,7 +575,7 @@ function applyFilters(items, query) {
 }
 
 function searchableText(item) {
-  return [
+  return normalizeForSearch([
     item.title,
     item.name,
     item.formula,
@@ -552,6 +583,8 @@ function searchableText(item) {
     item.text,
     item.book,
     item.source,
+    item.sourceUrl,
+    item.date,
     item.category,
     item.volume,
     item.sixChannel,
@@ -559,11 +592,42 @@ function searchableText(item) {
     item.pattern,
     item.treatment,
     item.summary,
+    item.content,
     item.symptoms,
     item.keywords,
     item.formulas,
     item.clauses
-  ].flat().filter(Boolean).join(" ").toLowerCase();
+  ].flat().filter(Boolean).join(" "));
+}
+
+function normalizeForSearch(value) {
+  const map = {
+    "醫": "医", "藥": "药", "學": "学", "經": "经", "論": "论", "證": "证", "條": "条", "辨": "辨",
+    "湯": "汤", "劑": "剂", "方": "方", "傷": "伤", "寒": "寒", "雜": "杂", "臟": "脏", "腑": "腑",
+    "陽": "阳", "陰": "阴", "腎": "肾", "肝": "肝", "膽": "胆", "脾": "脾", "胃": "胃", "肺": "肺",
+    "腸": "肠", "腦": "脑", "頭": "头", "風": "风", "濕": "湿", "熱": "热", "寒": "寒", "氣": "气",
+    "血": "血", "痰": "痰", "飲": "饮", "癥": "症", "癰": "痈", "瘡": "疮", "腫": "肿", "瘤": "瘤",
+    "癲": "癫", "癇": "痫", "癒": "愈", "療": "疗", "診": "诊", "斷": "断", "處": "处", "體": "体",
+    "婦": "妇", "兒": "儿", "產": "产", "髮": "发", "發": "发", "後": "后", "裡": "里", "裏": "里",
+    "轉": "转", "變": "变", "關": "关", "開": "开", "閉": "闭", "瀉": "泻", "補": "补", "虛": "虚",
+    "實": "实", "濁": "浊", "鬱": "郁", "滯": "滞", "鬆": "松", "緊": "紧", "緩": "缓", "雙": "双",
+    "單": "单", "難": "难", "臨": "临", "床": "床", "師": "师", "漢": "汉", "唐": "唐", "學生": "学生",
+    "棗": "枣", "薑": "姜", "蔥": "葱", "蔘": "参", "參": "参", "朮": "术", "麥": "麦", "麴": "曲",
+    "黃": "黄", "龍": "龙", "鬚": "须", "鬱": "郁", "硃": "朱", "硃": "朱", "礬": "矾", "鹽": "盐",
+    "烏": "乌", "雞": "鸡", "馬": "马", "驚": "惊", "驅": "驱", "蟲": "虫", "蟬": "蝉", "蠣": "蛎",
+    "貝": "贝", "貞": "贞", "貧": "贫", "貫": "贯", "連": "连", "遠": "远", "適": "适", "遲": "迟",
+    "選": "选", "還": "还", "這": "这", "個": "个", "與": "与", "為": "为", "無": "无", "來": "来",
+    "會": "会", "應": "应", "時": "时", "點": "点", "見": "见", "觀": "观", "問": "问", "聞": "闻",
+    "說": "说", "記": "记", "錄": "录", "寫": "写", "復": "复", "續": "续", "對": "对", "帶": "带",
+    "數": "数", "歲": "岁", "號": "号", "頁": "页", "類": "类", "總": "总", "別": "别", "塊": "块",
+    "裡": "里", "從": "从", "點": "点", "擊": "击", "顯": "显", "頁": "页", "網": "网"
+  };
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[，。、“”‘’；：？！《》（）【】\[\]{}]/g, " ")
+    .replace(/[\s\r\n\t]+/g, " ")
+    .replace(/[\u3400-\u9fff]/g, (char) => map[char] || char)
+    .trim();
 }
 
 function renderFormulaCards(items) {
@@ -612,16 +676,31 @@ function renderClauseList(container, items, book) {
   `).join("");
 }
 
+function renderCaseCards(items) {
+  els.casesGrid.innerHTML = items.map(caseCard).join("");
+}
+
+function caseCard(item) {
+  return `
+    <button class="library-card article-card" type="button" data-kind="case" data-id="${escapeHtml(item.id)}">
+      <div class="tag-row">${tag(item.source)}${tag(item.date)}${(item.keywords || []).slice(0, 3).map(tag).join("")}</div>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(item.summary || item.content || "")}</p>
+      <div class="card-footer"><span>${escapeHtml(item.formula || item.pattern || item.category || "医案全文")}</span><span>查看详情</span></div>
+    </button>
+  `;
+}
+
 function tag(value) {
   return value ? `<span class="tag">${escapeHtml(String(value))}</span>` : "";
 }
 
 function openDetail(kind, id) {
-  const sourceKey = kind === "formula" ? "formulas" : "jingui";
+  const sourceKey = kind === "formula" ? "formulas" : kind === "case" ? "cases" : "jingui";
   const item = datasets[sourceKey].find((entry) => entry.id === id);
   if (!item) return;
   const title = item.name || item.title || `${item.book || ""} ${item.number || ""}`.trim();
-  els.modalCategory.textContent = kind === "formula" ? "方剂" : item.book;
+  els.modalCategory.textContent = kind === "formula" ? "方剂" : kind === "case" ? "医案" : item.book;
   els.modalTitle.textContent = title;
   els.modalTags.innerHTML = [item.source, item.book, item.category, item.volume, ...(item.keywords || [])].filter(Boolean).map(tag).join("");
   els.modalDetails.innerHTML = buildDetails(item);
