@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>六经方证录：伤寒论与金匮要略经方条辨库</title>
+  <title>经方六经库：经典经方、金匮条文、倪师医案资料库</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <p class="eyebrow">伤寒六经 · 方证条辨 · 经方索引</p>
-      <h1>六经方证录</h1>
-      <p class="intro">按六经、篇章与方证脉络整理《伤寒论》《金匮要略》资料，专题正文点击后再加载，便于持续补充与校勘。</p>
+      <p class="eyebrow">伤寒六经 · 金匮条文 · 倪师医案</p>
+      <h1>经方六经库</h1>
+      <p class="intro">把经典方证、金匮条文与倪师医案放在同一个检索库里。首页只保留入口、统计和当前模块内容，资料再多也按六经与关键词逐层查找。</p>
       <div class="search-wrap">
-        <label for="siteSearch">搜索经方条辨</label>
-        <input id="siteSearch" type="search" placeholder="输入方名、六经、篇章、症状、病机或关键词">
+        <label for="siteSearch">全库搜索</label>
+        <input id="siteSearch" type="search" placeholder="输入方名、六经、病机、症状、关键词或医案内容">
       </div>
     </div>
   </header>
@@ -39,6 +39,21 @@
       </div>
     </section>
 
+    <section class="module-tabs" aria-label="资料模块">
+      <button class="module-tab is-active" type="button" data-module-tab="formulas">
+        <strong>经典方剂</strong>
+        <span>伤寒 113 方按六经查</span>
+      </button>
+      <button class="module-tab" type="button" data-module-tab="jingui">
+        <strong>金匮条文</strong>
+        <span>篇章条文与方名关联</span>
+      </button>
+      <button class="module-tab" type="button" data-module-tab="cases">
+        <strong>倪师医案</strong>
+        <span>按六经辨证与关键词检索</span>
+      </button>
+    </section>
+
     <section class="filters" aria-label="资料筛选">
       <div>
         <span>经典</span>
@@ -50,7 +65,7 @@
       </div>
     </section>
 
-    <section class="library-section" aria-labelledby="formulasTitle">
+    <section class="library-section" data-module-panel="formulas" aria-labelledby="formulasTitle">
       <div class="section-head">
         <h2 id="formulasTitle">伤寒方剂总库</h2>
         <p id="formulasHint">每张卡片对应一个方剂，点击查看条文、证候、病机、治法、方义与鉴别。</p>
@@ -58,7 +73,7 @@
       <div id="formulasGrid" class="card-grid" aria-live="polite"></div>
     </section>
 
-    <section class="library-section" aria-labelledby="jinguiTitle">
+    <section class="library-section" data-module-panel="jingui" aria-labelledby="jinguiTitle" hidden>
       <div class="section-head">
         <h2 id="jinguiTitle">金匮要略条辨</h2>
         <p id="jinguiHint">按篇章归类，并关联对应方剂。</p>
@@ -66,12 +81,12 @@
       <div id="jinguiGrid" class="clause-list" aria-live="polite"></div>
     </section>
 
-    <section class="library-section" aria-labelledby="casesTitle">
+    <section class="library-section" data-module-panel="cases" aria-labelledby="casesTitle" hidden>
       <div class="section-head">
         <h2 id="casesTitle">倪师医案</h2>
         <p id="casesHint">全文入库，支持按病名、症状、方名、关键词检索。</p>
       </div>
-      <div id="casesGrid" class="formula-group-grid" aria-live="polite"></div>
+      <div id="casesGrid" class="card-grid" aria-live="polite"></div>
     </section>
 
     <p id="emptyState" class="empty-state" hidden>没有找到匹配内容，请换个关键词或分类试试。</p>

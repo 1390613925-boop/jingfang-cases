@@ -110,7 +110,51 @@ h1 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
-  margin-bottom: 34px;
+  margin-bottom: 20px;
+}
+
+.module-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.module-tab {
+  display: grid;
+  gap: 6px;
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  color: var(--ink);
+  background: rgba(255, 253, 248, 0.78);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+
+.module-tab strong {
+  color: var(--green);
+  font-size: 18px;
+}
+
+.module-tab span {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.module-tab:hover,
+.module-tab:focus-visible,
+.module-tab.is-active {
+  border-color: rgba(40, 96, 82, 0.62);
+  box-shadow: 0 12px 26px rgba(42, 35, 24, 0.09);
+  transform: translateY(-1px);
+}
+
+.module-tab.is-active {
+  background: #f3fbf5;
 }
 
 .filters {
@@ -233,6 +277,50 @@ h1 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 18px;
+}
+
+.case-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.channel-overview {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.channel-pill {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 10px;
+  color: var(--ink);
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+
+.channel-pill strong {
+  color: var(--green);
+  font-size: 14px;
+}
+
+.channel-pill span {
+  color: var(--red);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.result-note {
+  border: 1px dashed rgba(40, 96, 82, 0.35);
+  border-radius: 8px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  color: var(--muted);
+  background: rgba(40, 96, 82, 0.06);
+  line-height: 1.7;
 }
 
 .clause-list {
@@ -485,8 +573,13 @@ h1 {
 
 @media (max-width: 900px) {
   .summary-row,
-  .formula-group-grid {
+  .formula-group-grid,
+  .module-tabs {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .channel-overview {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -496,7 +589,9 @@ h1 {
   }
 
   .summary-row,
-  .formula-group-grid {
+  .formula-group-grid,
+  .module-tabs,
+  .channel-overview {
     grid-template-columns: 1fr;
   }
 

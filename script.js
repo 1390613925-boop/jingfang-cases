@@ -9,6 +9,9 @@ const filters = {
   category: "全部"
 };
 
+let activeModule = "formulas";
+const CASE_RENDER_LIMIT = 90;
+
 const formulaCategoryOrder = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "霍乱病", "差后劳复与阴阳易", "伤寒论"];
 
 const shanghan113Rows = `
@@ -137,6 +140,8 @@ const els = {
   sourceCount: document.querySelector("#sourceCount"),
   jinguiCount: document.querySelector("#jinguiCount"),
   caseCount: document.querySelector("#caseCount"),
+  moduleTabs: document.querySelectorAll("[data-module-tab]"),
+  modulePanels: document.querySelectorAll("[data-module-panel]"),
   formulasHint: document.querySelector("#formulasHint"),
   jinguiHint: document.querySelector("#jinguiHint"),
   casesHint: document.querySelector("#casesHint"),
@@ -537,7 +542,12 @@ function buildKeywords(item) {
 
 function renderFilters() {
   renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略", "倪师医案"], "book");
-  const categories = ["全部", ...new Set([...datasets.formulas, ...datasets.jingui, ...datasets.cases].map((item) => item.category).filter(Boolean))];
+  const source = activeModule === "formulas" ? datasets.formulas : activeModule === "jingui" ? datasets.jingui : datasets.cases;
+  const ordered = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "未定六经"];
+  const rest = [...new Set(source.map((item) => item.category).filter(Boolean))]
+    .filter((item) => !ordered.includes(item))
+    .sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+  const categories = ["全部", ...ordered.filter((item) => source.some((entry) => entry.category === item)), ...rest];
   renderChips(els.categoryFilters, categories, "category");
 }
 
@@ -551,18 +561,29 @@ function renderAll() {
   const jingui = applyFilters(datasets.jingui, query);
   const cases = applyFilters(datasets.cases, query);
 
-  renderFormulaCards(formulas);
-  renderClauseList(els.jinguiGrid, jingui, "金匮要略");
-  renderCaseCards(cases);
+  syncModulePanels();
+  if (activeModule === "formulas") renderFormulaCards(formulas);
+  if (activeModule === "jingui") renderClauseList(els.jinguiGrid, jingui, "金匮要略");
+  if (activeModule === "cases") renderCaseCards(cases, query);
 
   els.formulaCount.textContent = formulas.length;
   els.sourceCount.textContent = new Set(datasets.formulas.map((item) => item.sourceTopic).filter(Boolean)).size;
   els.jinguiCount.textContent = jingui.length;
   els.caseCount.textContent = cases.length;
-  els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，点击卡片查看详情。` : "当前筛选没有方剂。";
+  els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，按六经分组，点击卡片查看详情。` : "当前筛选没有方剂。";
   els.jinguiHint.textContent = jingui.length ? `共 ${jingui.length} 条金匮要略条文。` : "当前筛选没有金匮要略条文。";
-  els.casesHint.textContent = cases.length ? `共 ${cases.length} 篇医案，点击卡片查看全文。` : "当前筛选没有医案。";
-  els.empty.hidden = formulas.length + jingui.length + cases.length > 0;
+  els.casesHint.textContent = caseHintText(cases, query);
+  const activeCount = activeModule === "formulas" ? formulas.length : activeModule === "jingui" ? jingui.length : cases.length;
+  els.empty.hidden = activeCount > 0;
+}
+
+function syncModulePanels() {
+  els.moduleTabs.forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.moduleTab === activeModule);
+  });
+  els.modulePanels.forEach((panel) => {
+    panel.hidden = panel.dataset.modulePanel !== activeModule;
+  });
 }
 
 function applyFilters(items, query) {
@@ -676,8 +697,50 @@ function renderClauseList(container, items, book) {
   `).join("");
 }
 
-function renderCaseCards(items) {
-  els.casesGrid.innerHTML = items.map(caseCard).join("");
+function renderCaseCards(items, query) {
+  const visible = shouldLimitCases(query) ? items.slice(0, CASE_RENDER_LIMIT) : items;
+  const groups = groupByCategory(visible);
+  const channelStats = caseChannelStats(items);
+  const notice = shouldLimitCases(query) && items.length > CASE_RENDER_LIMIT
+    ? `<p class="result-note">当前匹配 ${items.length} 篇，先显示 ${CASE_RENDER_LIMIT} 篇。继续输入病名、方名、症状或选择六经，可以更快定位。</p>`
+    : "";
+  els.casesGrid.innerHTML = `
+    <div class="channel-overview">${channelStats.map(([name, count]) => `<button class="channel-pill" type="button" data-filter="category" data-value="${escapeHtml(name)}"><strong>${escapeHtml(name)}</strong><span>${count}</span></button>`).join("")}</div>
+    ${notice}
+    ${groups.map(([category, cases]) => `
+      <section class="formula-group" aria-labelledby="case-group-${makeId(category)}">
+        <div class="formula-group-head">
+          <h3 id="case-group-${makeId(category)}">${escapeHtml(category)}</h3>
+          <span>${cases.length} 篇</span>
+        </div>
+        <div class="formula-group-grid case-grid">
+          ${cases.map(caseCard).join("")}
+        </div>
+      </section>
+    `).join("")}
+  `;
+}
+
+function shouldLimitCases(query) {
+  return !query && filters.category === "全部";
+}
+
+function caseHintText(items, query) {
+  if (!items.length) return "当前筛选没有医案。";
+  if (shouldLimitCases(query) && items.length > CASE_RENDER_LIMIT) {
+    return `共 ${items.length} 篇医案，已按六经归类。默认先显示 ${CASE_RENDER_LIMIT} 篇，建议用搜索或六经筛选。`;
+  }
+  return `共 ${items.length} 篇医案，点击卡片查看全文。`;
+}
+
+function caseChannelStats(items) {
+  const order = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "未定六经"];
+  const counts = new Map(order.map((name) => [name, 0]));
+  items.forEach((item) => {
+    const key = item.category || item.sixChannel || "未定六经";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return [...counts.entries()].filter(([, count]) => count > 0);
 }
 
 function caseCard(item) {
@@ -740,6 +803,16 @@ function escapeHtml(value) {
 }
 
 document.addEventListener("click", (event) => {
+  const moduleTab = event.target.closest("[data-module-tab]");
+  if (moduleTab) {
+    activeModule = moduleTab.dataset.moduleTab;
+    filters.book = activeModule === "formulas" ? "伤寒论" : activeModule === "jingui" ? "金匮要略" : "倪师医案";
+    filters.category = "全部";
+    renderFilters();
+    renderAll();
+    return;
+  }
+
   const chip = event.target.closest("[data-filter]");
   if (chip) {
     filters[chip.dataset.filter] = chip.dataset.value;
