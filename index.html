@@ -71,9 +71,13 @@
         <strong>经典方剂</strong>
         <span>伤寒 113 方按六经查</span>
       </button>
-      <button class="module-tab" type="button" data-module-tab="jingui">
+      <button class="module-tab" type="button" data-module-tab="jingui-clauses">
         <strong>金匮条文</strong>
-        <span>篇章条文与方名关联</span>
+        <span>原文、白话与病机提示</span>
+      </button>
+      <button class="module-tab" type="button" data-module-tab="jingui-formulas">
+        <strong>金匮方剂</strong>
+        <span>203 首方剂按篇章检索</span>
       </button>
       <button class="module-tab" type="button" data-module-tab="cases">
         <strong>倪师医案</strong>
@@ -100,16 +104,23 @@
       <div id="formulasGrid" class="card-grid" aria-live="polite"></div>
     </section>
 
-    <section class="library-section" data-module-panel="jingui" aria-labelledby="jinguiTitle" hidden>
+    <section class="library-section" data-module-panel="jingui-clauses" aria-labelledby="jinguiTitle" hidden>
       <div class="section-head">
         <h2 id="jinguiTitle">金匮要略条辨</h2>
         <div>
           <p id="jinguiHint">按篇章归类，并关联对应方剂。</p>
-          <button class="chip" type="button" data-jingui-formulas>查看金匮方剂</button>
           <button class="chip" type="button" data-jingui-pages>查看 PDF OCR 全文</button>
         </div>
       </div>
       <div id="jinguiGrid" class="clause-list" aria-live="polite"></div>
+    </section>
+
+    <section class="library-section" data-module-panel="jingui-formulas" aria-labelledby="jinguiFormulasTitle" hidden>
+      <div class="section-head">
+        <h2 id="jinguiFormulasTitle">金匮要略方剂</h2>
+        <p id="jinguiFormulasHint">每张卡片对应一首方剂，点击查看关联条文和白话提示。</p>
+      </div>
+      <div id="jinguiFormulasGrid" class="card-grid" aria-live="polite"></div>
     </section>
 
     <section class="library-section" data-module-panel="cases" aria-labelledby="casesTitle" hidden>

@@ -163,7 +163,8 @@ const els = {
   modulePanels: document.querySelectorAll("[data-module-panel]"),
   formulasHint: document.querySelector("#formulasHint"),
   jinguiHint: document.querySelector("#jinguiHint"),
-  jinguiFormulasToggle: document.querySelector("[data-jingui-formulas]"),
+  jinguiFormulasGrid: document.querySelector("#jinguiFormulasGrid"),
+  jinguiFormulasHint: document.querySelector("#jinguiFormulasHint"),
   jinguiPagesToggle: document.querySelector("[data-jingui-pages]"),
   casesHint: document.querySelector("#casesHint"),
   bookFilters: document.querySelector("#bookFilters"),
@@ -621,7 +622,7 @@ function buildKeywords(item) {
 
 function renderFilters() {
   renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略", "倪师医案"], "book");
-  const source = activeModule === "formulas" ? datasets.formulas : activeModule === "jingui" ? datasets.jingui : datasets.cases;
+  const source = activeModule === "formulas" ? datasets.formulas : activeModule === "jingui-formulas" ? datasets.jinguiFormulas : activeModule === "jingui-clauses" ? datasets.jingui : datasets.cases;
   const ordered = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "未定六经"];
   const rest = [...new Set(source.map((item) => item.category).filter(Boolean))]
     .filter((item) => !ordered.includes(item))
@@ -640,15 +641,13 @@ function renderAll() {
   const jinguiClauses = applyFilters(datasets.jingui, query);
   const jinguiFormulas = applyFilters(datasets.jinguiFormulas, query);
   const jinguiPages = (jinguiView === "pdf" || query) ? applyFilters(datasets.jinguiPages, query) : [];
-  const jingui = jinguiView === "pdf" ? jinguiPages : jinguiView === "formulas" ? jinguiFormulas : [...jinguiClauses, ...jinguiPages];
+  const jingui = jinguiView === "pdf" ? jinguiPages : [...jinguiClauses, ...jinguiPages];
   const cases = applyFilters(datasets.cases, query);
 
   syncModulePanels();
   if (activeModule === "formulas") renderFormulaCards(formulas);
-  if (activeModule === "jingui") {
-    if (jinguiView === "formulas") renderFormulaCardsInto(els.jinguiGrid, jingui);
-    else renderClauseList(els.jinguiGrid, jingui, "金匮要略");
-  }
+  if (activeModule === "jingui-clauses") renderClauseList(els.jinguiGrid, jingui, "金匮要略");
+  if (activeModule === "jingui-formulas") renderFormulaCardsInto(els.jinguiFormulasGrid, jinguiFormulas);
   if (activeModule === "cases") renderCaseCards(cases, query);
 
   els.formulaCount.textContent = formulas.length;
@@ -657,20 +656,19 @@ function renderAll() {
   els.jinguiCount.textContent = datasets.jingui.length;
   els.caseCount.textContent = cases.length;
   els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，按六经分组，点击卡片查看详情。` : "当前筛选没有方剂。";
-  const jinguiTotal = jinguiView === "pdf" ? datasets.jinguiPages.length : jinguiView === "formulas" ? datasets.jinguiFormulas.length : datasets.jingui.length;
+  const jinguiTotal = jinguiView === "pdf" ? datasets.jinguiPages.length : datasets.jingui.length;
   els.jinguiHint.textContent = jingui.length
-    ? (query ? `当前检索到 ${jingui.length} 条结果（库内共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 OCR 原文" : jinguiView === "formulas" ? " 首归档方剂" : " 条整理条文"}）。` : `共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 PDF OCR 原文" : jinguiView === "formulas" ? " 首金匮归档方剂" : " 条金匮要略整理条文"}。`)
+    ? (query ? `当前检索到 ${activeModule === "jingui-formulas" ? jinguiFormulas.length : jingui.length} 条结果。` : `共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 PDF OCR 原文" : " 条金匮要略整理条文"}。`)
     : "当前筛选没有金匮要略内容。";
   if (els.jinguiPagesToggle) {
     els.jinguiPagesToggle.textContent = jinguiView === "pdf" ? "返回整理条文" : "查看 PDF OCR 全文";
     els.jinguiPagesToggle.classList.toggle("is-active", jinguiView === "pdf");
   }
-  if (els.jinguiFormulasToggle) {
-    els.jinguiFormulasToggle.textContent = jinguiView === "formulas" ? "返回金匮条文" : "查看金匮方剂";
-    els.jinguiFormulasToggle.classList.toggle("is-active", jinguiView === "formulas");
-  }
+  if (els.jinguiFormulasHint) els.jinguiFormulasHint.textContent = query
+    ? `当前检索到 ${jinguiFormulas.length} 首金匮方剂。`
+    : `共 ${jinguiFormulas.length} 首金匮方剂，点击卡片查看关联条文。`;
   els.casesHint.textContent = caseHintText(cases, query);
-  const activeCount = activeModule === "formulas" ? formulas.length : activeModule === "jingui" ? jingui.length : cases.length;
+  const activeCount = activeModule === "formulas" ? formulas.length : activeModule === "jingui-clauses" ? jingui.length : activeModule === "jingui-formulas" ? jinguiFormulas.length : cases.length;
   els.empty.hidden = activeCount > 0;
 }
 
@@ -979,17 +977,10 @@ document.addEventListener("click", (event) => {
     renderAll();
     return;
   }
-  const jinguiFormulasToggle = event.target.closest("[data-jingui-formulas]");
-  if (jinguiFormulasToggle) {
-    jinguiView = jinguiView === "formulas" ? "clauses" : "formulas";
-    renderAll();
-    return;
-  }
-
   const moduleTab = event.target.closest("[data-module-tab]");
   if (moduleTab) {
     activeModule = moduleTab.dataset.moduleTab;
-    filters.book = activeModule === "formulas" ? "伤寒论" : activeModule === "jingui" ? "金匮要略" : "倪师医案";
+    filters.book = activeModule === "formulas" ? "伤寒论" : activeModule === "jingui-clauses" || activeModule === "jingui-formulas" ? "金匮要略" : "倪师医案";
     filters.category = "全部";
     renderFilters();
     renderAll();
