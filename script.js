@@ -623,12 +623,28 @@ function syncModulePanels() {
 }
 
 function applyFilters(items, query) {
+  const queryTerms = expandSearchTerms(query);
   return items.filter((item) => {
     const bookOk = filters.book === "全部" || item.book === filters.book || item.source === filters.book;
     const categoryOk = filters.category === "全部" || item.category === filters.category;
-    const queryOk = !query || searchableText(item).includes(query);
+    const text = searchableText(item);
+    const queryOk = !query || queryTerms.some((term) => text.includes(term));
     return bookOk && categoryOk && queryOk;
   });
+}
+
+function expandSearchTerms(query) {
+  const aliases = {
+    "咳嗽": ["咳嗽", "咳"],
+    "失眠": ["失眠", "不得眠", "不寐", "少寐"],
+    "水肿": ["水肿", "浮肿", "肿"],
+    "发热": ["发热", "身热", "潮热"],
+    "怕冷": ["怕冷", "恶寒", "畏寒"],
+    "腹泻": ["腹泻", "下利", "泄泻", "自利"],
+    "便秘": ["便秘", "大便难", "不大便"],
+    "心慌": ["心慌", "心悸", "动悸"]
+  };
+  return aliases[query] || [query];
 }
 
 function searchableText(item) {
