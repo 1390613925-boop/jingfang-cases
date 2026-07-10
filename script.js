@@ -13,6 +13,7 @@ const filters = {
 
 let activeModule = "formulas";
 let jinguiView = "clauses";
+let diseaseIndex = [];
 const CASE_RENDER_LIMIT = 90;
 let searchRenderTimer = 0;
 let searchRenderFrame = 0;
@@ -244,13 +245,14 @@ const detailOrder = [
 ];
 
 async function loadData() {
-  const [articleText, legacyFormulas, jingui, jinguiFormulas, jinguiPages, cases] = await Promise.all([
+  const [articleText, legacyFormulas, jingui, jinguiFormulas, jinguiPages, cases, diseaseTerms] = await Promise.all([
     loadArticleCorpus(),
     fetchJson("./data/formulas.json").catch(() => []),
     fetchJson("./data/jingui-clauses.json"),
     fetchJson("./data/jingui-formulas.json").catch(() => []),
     fetchJson("./data/jingui-pages.json").catch(() => []),
-    fetchJson("./data/cases.json").catch(() => [])
+    fetchJson("./data/cases.json").catch(() => []),
+    fetchJson("./data/disease-index.json").catch(() => [])
   ]);
 
   datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas);
@@ -258,6 +260,7 @@ async function loadData() {
   datasets.jinguiFormulas = jinguiFormulas.map((item) => ({ ...item, book: "金匮要略", type: "jingui-formula" }));
   datasets.jinguiPages = jinguiPages.map((item) => ({ ...item, book: "金匮要略", type: "jingui-page" }));
   datasets.cases = cases.map(normalizeCase);
+  diseaseIndex = diseaseTerms;
   buildSearchIndex();
   renderFilters();
   renderAll();
@@ -645,9 +648,9 @@ function renderAll() {
   const cases = applyFilters(datasets.cases, query);
 
   syncModulePanels();
-  if (activeModule === "formulas") renderFormulaCards(formulas);
+  if (activeModule === "formulas") renderFormulaCards(formulas, query);
   if (activeModule === "jingui-clauses") renderClauseList(els.jinguiGrid, jingui, "金匮要略");
-  if (activeModule === "jingui-formulas") renderFormulaCardsInto(els.jinguiFormulasGrid, jinguiFormulas);
+  if (activeModule === "jingui-formulas") renderFormulaCardsInto(els.jinguiFormulasGrid, jinguiFormulas, query);
   if (activeModule === "cases") renderCaseCards(cases, query);
 
   els.formulaCount.textContent = formulas.length;
@@ -655,7 +658,7 @@ function renderAll() {
   // Keep the overview card stable; search results are reported in the module hint.
   els.jinguiCount.textContent = datasets.jingui.length;
   els.caseCount.textContent = cases.length;
-  els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，按六经分组，点击卡片查看详情。` : "当前筛选没有方剂。";
+  els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，按六经分组，点击卡片查看详情。${query ? "结果中的匹配提示仅用于资料检索参考。" : ""}` : "当前筛选没有方剂。";
   const jinguiTotal = jinguiView === "pdf" ? datasets.jinguiPages.length : datasets.jingui.length;
   els.jinguiHint.textContent = jingui.length
     ? (query ? `当前检索到 ${activeModule === "jingui-formulas" ? jinguiFormulas.length : jingui.length} 条结果。` : `共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 PDF OCR 原文" : " 条金匮要略整理条文"}。`)
@@ -703,7 +706,39 @@ function expandSearchTerms(query) {
     "便秘": ["便秘", "大便难", "不大便"],
     "心慌": ["心慌", "心悸", "动悸"]
   };
-  return aliases[query] || [query];
+  const direct = aliases[query] || [query];
+  const disease = diseaseIndex.find((item) => [item.name, ...(item.aliases || [])].some((alias) => normalizeForSearch(alias) === query));
+  return [...new Set([...direct, ...(disease?.searchTerms || [])].map(normalizeForSearch).filter(Boolean))];
+}
+
+function findDiseaseProfile(query) {
+  return diseaseIndex.find((item) => [item.name, ...(item.aliases || [])].some((alias) => normalizeForSearch(alias) === query));
+}
+
+function formulaMatch(item, query) {
+  if (!query || !["formula", "jingui-formula"].includes(item.type)) return null;
+  const terms = expandSearchTerms(query);
+  const fields = [
+    ["方名", [item.name, item.title]],
+    ["症状 / 主证", [item.syndrome, item.symptoms, item.keyPoints]],
+    ["病机", [item.pattern, item.pathogenesis]],
+    ["原文 / 条文", [item.clauses, item.text, item.notes]],
+    ["关键词", [item.keywords, item.category]]
+  ];
+  const matches = fields.map(([label, values]) => {
+    const text = normalizeForSearch(values.flat().filter(Boolean).join(" "));
+    return { label, terms: terms.filter((term) => term.length > 1 && text.includes(term)) };
+  }).filter((field) => field.terms.length);
+  const matchedTerms = [...new Set(matches.flatMap((field) => field.terms))];
+  if (!matchedTerms.length) return null;
+  const profile = findDiseaseProfile(query);
+  const level = matchedTerms.length >= 4 ? "较高" : matchedTerms.length >= 2 ? "中等" : "有限";
+  return {
+    level,
+    terms: matchedTerms,
+    fields: matches,
+    note: profile?.note || "这是基于文字字段的资料匹配，不代表临床疗效或固定适用关系。"
+  };
 }
 
 function searchableText(item) {
@@ -770,7 +805,7 @@ function normalizeForSearch(value) {
     .trim();
 }
 
-function renderFormulaCards(items) {
+function renderFormulaCards(items, query = "") {
   const groups = groupByCategory(items);
   els.formulasGrid.innerHTML = groups.map(([category, formulas]) => `
     <section class="formula-group" aria-labelledby="group-${makeId(category)}">
@@ -779,13 +814,13 @@ function renderFormulaCards(items) {
         <span>${formulas.length} 首</span>
       </div>
       <div class="formula-group-grid">
-        ${formulas.map(formulaCard).join("")}
+        ${formulas.map((formula) => formulaCard(formula, query)).join("")}
       </div>
     </section>
   `).join("");
 }
 
-function renderFormulaCardsInto(container, items) {
+function renderFormulaCardsInto(container, items, query = "") {
   const groups = groupByCategory(items);
   container.innerHTML = groups.map(([category, formulas]) => `
     <section class="formula-group" aria-labelledby="jingui-formula-group-${makeId(category)}">
@@ -794,7 +829,7 @@ function renderFormulaCardsInto(container, items) {
         <span>${formulas.length} 首</span>
       </div>
       <div class="formula-group-grid">
-        ${formulas.map(formulaCard).join("")}
+        ${formulas.map((formula) => formulaCard(formula, query)).join("")}
       </div>
     </section>
   `).join("");
@@ -810,12 +845,14 @@ function groupByCategory(items) {
   return [...byCategory.entries()].sort((a, b) => getCategoryRank(a[0]) - getCategoryRank(b[0]));
 }
 
-function formulaCard(item) {
+function formulaCard(item, query = "") {
+  const match = formulaMatch(item, query);
   return `
     <button class="library-card" type="button" data-kind="formula" data-id="${escapeHtml(item.id)}">
       <div class="tag-row">${tag(item.source)}${tag(item.category)}${tag(item.volume)}${tag(item.status)}</div>
       <h3>${escapeHtml(item.name)}</h3>
       <p>${escapeHtml(item.syndrome || item.pattern || item.plainExplanation || item.notes || "")}</p>
+      ${match ? `<div class="match-note"><strong>资料匹配${escapeHtml(match.level)}</strong><span>${escapeHtml(match.terms.slice(0, 5).join("、"))}</span></div>` : ""}
       <div class="card-footer"><span>${escapeHtml(item.treatment || item.sourceTopic || "方证详情")}</span><span>查看详情</span></div>
     </button>
   `;
@@ -910,15 +947,22 @@ async function openDetail(kind, id) {
   els.modalCategory.textContent = kind === "formula" ? "方剂" : kind === "case" ? "医案" : item.book;
   els.modalTitle.textContent = title;
   els.modalTags.innerHTML = [item.source, item.book, item.category, item.volume, ...(item.keywords || [])].filter(Boolean).map(tag).join("");
-  els.modalDetails.innerHTML = buildDetails(item);
+  els.modalDetails.innerHTML = buildDetails(item, normalizeForSearch(els.search.value.trim()));
   els.modal.hidden = false;
   document.body.style.overflow = "hidden";
 }
 
-function buildDetails(item) {
+function buildDetails(item, query = "") {
   const hidden = new Set(["id", "name", "title", "type", "raw", "_searchText"]);
   const keys = [...detailOrder, ...Object.keys(item).filter((key) => !detailOrder.includes(key))];
-  return keys
+  const match = formulaMatch(item, query);
+  const matchBlock = match ? `
+    <div class="detail-item match-detail">
+      <div class="detail-label">检索匹配参考</div>
+      <p class="detail-value"><strong>资料匹配${escapeHtml(match.level)}</strong>：命中 ${escapeHtml(match.terms.join("、"))}。</p>
+      <p class="detail-note">${escapeHtml(match.note)}</p>
+    </div>` : "";
+  return matchBlock + keys
     .filter((key) => !hidden.has(key))
     .filter((key) => hasValue(item[key]))
     .map((key) => `

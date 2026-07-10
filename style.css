@@ -222,6 +222,13 @@ h1 {
   color: var(--muted);
 }
 
+.search-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .content {
   padding: 32px 0 44px;
 }
@@ -317,6 +324,30 @@ h1 {
   border-color: var(--green);
   color: #fff;
   background: var(--green);
+}
+
+.match-note {
+  display: grid;
+  gap: 3px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--red);
+  color: var(--muted);
+  background: #fbf5ea;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.match-note strong {
+  color: var(--red);
+  font-size: 12px;
+}
+
+.detail-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .summary-row div {
