@@ -34,6 +34,15 @@ const caseShardFiles = [
 
 const formulaCategoryOrder = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "霍乱病", "差后劳复与阴阳易", "伤寒论"];
 
+const symptomLexicon = [
+  "发热", "恶寒", "怕冷", "往来寒热", "无汗", "汗出", "自汗", "盗汗", "头痛", "眩晕", "头晕",
+  "咳嗽", "咳逆", "喘", "气短", "胸闷", "胸痛", "心悸", "动悸", "烦躁", "失眠", "惊悸",
+  "口渴", "口苦", "口干", "咽痛", "鼻塞", "流涕", "黄疸", "胁痛", "腹痛", "腹满", "腹胀",
+  "心下痞", "恶心", "呕吐", "干呕", "反酸", "下利", "腹泻", "便秘", "大便难", "小便不利",
+  "小便频数", "水肿", "浮肿", "身痛", "身重", "身痒", "皮疹", "瘙痒", "手足厥冷", "四肢厥冷",
+  "痰饮", "痰多", "出血", "吐血", "衄血", "便血", "月经不调", "痛经", "妊娠", "产后"
+];
+
 const shanghan113Rows = `
 太阳病|白虎加人参汤
 太阳病|甘草干姜汤
@@ -195,6 +204,8 @@ const labels = {
   pattern: "病机",
   treatment: "治法",
   symptoms: "症状",
+  symptomProfile: "症状检索词（原文命中）",
+  matchBasis: "匹配依据",
   keywords: "关键词",
   plainExplanation: "白话说明（学习辅助）",
   pathogenesis: "病机提示（待校订）",
@@ -235,6 +246,8 @@ const detailOrder = [
   "differentiation",
   "warnings",
   "indications",
+  "symptomProfile",
+  "matchBasis",
   "plainExplanation",
   "pathogenesis",
   "notes",
@@ -255,9 +268,9 @@ async function loadData() {
     fetchJson("./data/disease-index.json").catch(() => [])
   ]);
 
-  datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas);
+  datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas).map(enrichFormulaProfile);
   datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略", type: "jingui" }));
-  datasets.jinguiFormulas = jinguiFormulas.map((item) => ({ ...item, book: "金匮要略", type: "jingui-formula" }));
+  datasets.jinguiFormulas = jinguiFormulas.map((item) => enrichFormulaProfile({ ...item, book: "金匮要略", type: "jingui-formula" }));
   datasets.jinguiPages = jinguiPages.map((item) => ({ ...item, book: "金匮要略", type: "jingui-page" }));
   datasets.cases = cases.map(normalizeCase);
   diseaseIndex = diseaseTerms;
@@ -331,6 +344,26 @@ function normalizeCase(item) {
     title: item.title || item.name || "未命名医案",
     keywords: item.keywords || [item.title, item.formula, item.pattern, item.category].filter(Boolean),
     symptoms: item.symptoms || []
+  };
+}
+
+function enrichFormulaProfile(item) {
+  const sourceText = normalizeForSearch([
+    item.syndrome,
+    item.pattern,
+    item.keyPoints,
+    item.clauses,
+    item.text,
+    item.keywords,
+    item.category
+  ].flat().filter(Boolean).join(" "));
+  const existing = Array.isArray(item.symptoms) ? item.symptoms : item.symptoms ? [item.symptoms] : [];
+  const symptoms = [...new Set([...existing, ...symptomLexicon.filter((term) => sourceText.includes(normalizeForSearch(term)))])];
+  return {
+    ...item,
+    symptoms,
+    symptomProfile: symptoms.length ? `原文症状词：${symptoms.join("、")}` : "暂未提取结构化症状词，建议回看原文条文。",
+    matchBasis: symptoms.length ? "根据方剂的条文、证型、病机和辨证抓手提取" : "尚无结构化症状词"
   };
 }
 
@@ -720,7 +753,7 @@ function formulaMatch(item, query) {
   const terms = expandSearchTerms(query);
   const fields = [
     ["方名", [item.name, item.title]],
-    ["症状 / 主证", [item.syndrome, item.symptoms, item.keyPoints]],
+    ["症状 / 主证", [item.syndrome, item.symptoms, item.symptomProfile, item.keyPoints]],
     ["病机", [item.pattern, item.pathogenesis]],
     ["原文 / 条文", [item.clauses, item.text, item.notes]],
     ["关键词", [item.keywords, item.category]]
