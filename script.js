@@ -1,6 +1,7 @@
 const datasets = {
   formulas: [],
   jingui: [],
+  jinguiFormulas: [],
   jinguiPages: [],
   cases: []
 };
@@ -162,6 +163,7 @@ const els = {
   modulePanels: document.querySelectorAll("[data-module-panel]"),
   formulasHint: document.querySelector("#formulasHint"),
   jinguiHint: document.querySelector("#jinguiHint"),
+  jinguiFormulasToggle: document.querySelector("[data-jingui-formulas]"),
   jinguiPagesToggle: document.querySelector("[data-jingui-pages]"),
   casesHint: document.querySelector("#casesHint"),
   bookFilters: document.querySelector("#bookFilters"),
@@ -192,6 +194,7 @@ const labels = {
   treatment: "治法",
   symptoms: "症状",
   keywords: "关键词",
+  plainExplanation: "白话说明（学习辅助）",
   composition: "组成",
   dosage: "常用成人剂量参考",
   usage: "煎服法",
@@ -229,6 +232,8 @@ const detailOrder = [
   "differentiation",
   "warnings",
   "indications",
+  "plainExplanation",
+  "pathogenesis",
   "notes",
   "content",
   "status",
@@ -237,16 +242,18 @@ const detailOrder = [
 ];
 
 async function loadData() {
-  const [articleText, legacyFormulas, jingui, jinguiPages, cases] = await Promise.all([
+  const [articleText, legacyFormulas, jingui, jinguiFormulas, jinguiPages, cases] = await Promise.all([
     loadArticleCorpus(),
     fetchJson("./data/formulas.json").catch(() => []),
     fetchJson("./data/jingui-clauses.json"),
+    fetchJson("./data/jingui-formulas.json").catch(() => []),
     fetchJson("./data/jingui-pages.json").catch(() => []),
     fetchJson("./data/cases.json").catch(() => [])
   ]);
 
   datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas);
   datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略", type: "jingui" }));
+  datasets.jinguiFormulas = jinguiFormulas.map((item) => ({ ...item, book: "金匮要略", type: "jingui-formula" }));
   datasets.jinguiPages = jinguiPages.map((item) => ({ ...item, book: "金匮要略", type: "jingui-page" }));
   datasets.cases = cases.map(normalizeCase);
   buildSearchIndex();
@@ -323,7 +330,7 @@ function normalizeCase(item) {
 }
 
 function buildSearchIndex() {
-  [...datasets.formulas, ...datasets.jingui, ...datasets.jinguiPages, ...datasets.cases].forEach((item) => {
+  [...datasets.formulas, ...datasets.jingui, ...datasets.jinguiFormulas, ...datasets.jinguiPages, ...datasets.cases].forEach((item) => {
     item._searchText = buildSearchText(item);
   });
 }
@@ -630,13 +637,17 @@ function renderAll() {
   const query = normalizeForSearch(els.search.value.trim());
   const formulas = applyFilters(datasets.formulas, query);
   const jinguiClauses = applyFilters(datasets.jingui, query);
+  const jinguiFormulas = applyFilters(datasets.jinguiFormulas, query);
   const jinguiPages = (jinguiView === "pdf" || query) ? applyFilters(datasets.jinguiPages, query) : [];
-  const jingui = jinguiView === "pdf" ? jinguiPages : [...jinguiClauses, ...jinguiPages];
+  const jingui = jinguiView === "pdf" ? jinguiPages : jinguiView === "formulas" ? jinguiFormulas : [...jinguiClauses, ...jinguiPages];
   const cases = applyFilters(datasets.cases, query);
 
   syncModulePanels();
   if (activeModule === "formulas") renderFormulaCards(formulas);
-  if (activeModule === "jingui") renderClauseList(els.jinguiGrid, jingui, "金匮要略");
+  if (activeModule === "jingui") {
+    if (jinguiView === "formulas") renderFormulaCardsInto(els.jinguiGrid, jingui);
+    else renderClauseList(els.jinguiGrid, jingui, "金匮要略");
+  }
   if (activeModule === "cases") renderCaseCards(cases, query);
 
   els.formulaCount.textContent = formulas.length;
@@ -645,13 +656,17 @@ function renderAll() {
   els.jinguiCount.textContent = datasets.jingui.length;
   els.caseCount.textContent = cases.length;
   els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，按六经分组，点击卡片查看详情。` : "当前筛选没有方剂。";
-  const jinguiTotal = jinguiView === "pdf" ? datasets.jinguiPages.length : datasets.jingui.length;
+  const jinguiTotal = jinguiView === "pdf" ? datasets.jinguiPages.length : jinguiView === "formulas" ? datasets.jinguiFormulas.length : datasets.jingui.length;
   els.jinguiHint.textContent = jingui.length
-    ? (query ? `当前检索到 ${jingui.length} 条结果（库内共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 OCR 原文" : " 条整理条文"}）。` : `共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 PDF OCR 原文" : " 条金匮要略整理条文"}。`)
+    ? (query ? `当前检索到 ${jingui.length} 条结果（库内共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 OCR 原文" : jinguiView === "formulas" ? " 首归档方剂" : " 条整理条文"}）。` : `共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 PDF OCR 原文" : jinguiView === "formulas" ? " 首金匮归档方剂" : " 条金匮要略整理条文"}。`)
     : "当前筛选没有金匮要略内容。";
   if (els.jinguiPagesToggle) {
     els.jinguiPagesToggle.textContent = jinguiView === "pdf" ? "返回整理条文" : "查看 PDF OCR 全文";
     els.jinguiPagesToggle.classList.toggle("is-active", jinguiView === "pdf");
+  }
+  if (els.jinguiFormulasToggle) {
+    els.jinguiFormulasToggle.textContent = jinguiView === "formulas" ? "返回金匮条文" : "查看金匮方剂";
+    els.jinguiFormulasToggle.classList.toggle("is-active", jinguiView === "formulas");
   }
   els.casesHint.textContent = caseHintText(cases, query);
   const activeCount = activeModule === "formulas" ? formulas.length : activeModule === "jingui" ? jingui.length : cases.length;
@@ -769,6 +784,21 @@ function renderFormulaCards(items) {
   `).join("");
 }
 
+function renderFormulaCardsInto(container, items) {
+  const groups = groupByCategory(items);
+  container.innerHTML = groups.map(([category, formulas]) => `
+    <section class="formula-group" aria-labelledby="jingui-formula-group-${makeId(category)}">
+      <div class="formula-group-head">
+        <h3 id="jingui-formula-group-${makeId(category)}">${escapeHtml(category)}</h3>
+        <span>${formulas.length} 首</span>
+      </div>
+      <div class="formula-group-grid">
+        ${formulas.map(formulaCard).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
 function groupByCategory(items) {
   const byCategory = new Map();
   items.forEach((item) => {
@@ -784,7 +814,7 @@ function formulaCard(item) {
     <button class="library-card" type="button" data-kind="formula" data-id="${escapeHtml(item.id)}">
       <div class="tag-row">${tag(item.source)}${tag(item.category)}${tag(item.volume)}${tag(item.status)}</div>
       <h3>${escapeHtml(item.name)}</h3>
-      <p>${escapeHtml(item.syndrome || item.pattern || item.notes || "")}</p>
+      <p>${escapeHtml(item.syndrome || item.pattern || item.plainExplanation || item.notes || "")}</p>
       <div class="card-footer"><span>${escapeHtml(item.treatment || item.sourceTopic || "方证详情")}</span><span>查看详情</span></div>
     </button>
   `;
@@ -863,7 +893,7 @@ function tag(value) {
 
 async function openDetail(kind, id) {
   const sourceKey = kind === "formula" ? "formulas" : kind === "case" ? "cases" : "jingui";
-  const sources = kind === "jingui" ? [datasets.jingui, datasets.jinguiPages] : [datasets[sourceKey]];
+  const sources = kind === "formula" ? [datasets.formulas, datasets.jinguiFormulas] : kind === "jingui" ? [datasets.jingui, datasets.jinguiPages] : [datasets[sourceKey]];
   const item = sources.flat().find((entry) => entry.id === id);
   if (!item) return;
   if (kind === "case" && !item.content) {
@@ -943,6 +973,12 @@ document.addEventListener("click", (event) => {
   const jinguiPagesToggle = event.target.closest("[data-jingui-pages]");
   if (jinguiPagesToggle) {
     jinguiView = jinguiView === "pdf" ? "clauses" : "pdf";
+    renderAll();
+    return;
+  }
+  const jinguiFormulasToggle = event.target.closest("[data-jingui-formulas]");
+  if (jinguiFormulasToggle) {
+    jinguiView = jinguiView === "formulas" ? "clauses" : "formulas";
     renderAll();
     return;
   }
