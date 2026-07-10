@@ -11,6 +11,7 @@ const filters = {
 };
 
 let activeModule = "formulas";
+let jinguiView = "clauses";
 const CASE_RENDER_LIMIT = 90;
 let searchRenderTimer = 0;
 let searchRenderFrame = 0;
@@ -161,6 +162,7 @@ const els = {
   modulePanels: document.querySelectorAll("[data-module-panel]"),
   formulasHint: document.querySelector("#formulasHint"),
   jinguiHint: document.querySelector("#jinguiHint"),
+  jinguiPagesToggle: document.querySelector("[data-jingui-pages]"),
   casesHint: document.querySelector("#casesHint"),
   bookFilters: document.querySelector("#bookFilters"),
   categoryFilters: document.querySelector("#categoryFilters"),
@@ -628,8 +630,8 @@ function renderAll() {
   const query = normalizeForSearch(els.search.value.trim());
   const formulas = applyFilters(datasets.formulas, query);
   const jinguiClauses = applyFilters(datasets.jingui, query);
-  const jinguiPages = query ? applyFilters(datasets.jinguiPages, query) : [];
-  const jingui = [...jinguiClauses, ...jinguiPages];
+  const jinguiPages = (jinguiView === "pdf" || query) ? applyFilters(datasets.jinguiPages, query) : [];
+  const jingui = jinguiView === "pdf" ? jinguiPages : [...jinguiClauses, ...jinguiPages];
   const cases = applyFilters(datasets.cases, query);
 
   syncModulePanels();
@@ -643,6 +645,10 @@ function renderAll() {
   els.caseCount.textContent = cases.length;
   els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，按六经分组，点击卡片查看详情。` : "当前筛选没有方剂。";
   els.jinguiHint.textContent = jingui.length ? `共 ${jingui.length} 条金匮要略条文。` : "当前筛选没有金匮要略条文。";
+  if (els.jinguiPagesToggle) {
+    els.jinguiPagesToggle.textContent = jinguiView === "pdf" ? "返回整理条文" : "查看 PDF OCR 全文";
+    els.jinguiPagesToggle.classList.toggle("is-active", jinguiView === "pdf");
+  }
   els.casesHint.textContent = caseHintText(cases, query);
   const activeCount = activeModule === "formulas" ? formulas.length : activeModule === "jingui" ? jingui.length : cases.length;
   els.empty.hidden = activeCount > 0;
@@ -927,6 +933,13 @@ document.addEventListener("click", (event) => {
     window.cancelAnimationFrame(searchRenderFrame);
     searchRenderFrame = window.requestAnimationFrame(renderAll);
     els.search.focus();
+    return;
+  }
+
+  const jinguiPagesToggle = event.target.closest("[data-jingui-pages]");
+  if (jinguiPagesToggle) {
+    jinguiView = jinguiView === "pdf" ? "clauses" : "pdf";
+    renderAll();
     return;
   }
 
