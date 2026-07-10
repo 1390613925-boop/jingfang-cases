@@ -206,6 +206,8 @@ const labels = {
   symptoms: "症状",
   symptomProfile: "症状检索词（原文命中）",
   matchBasis: "匹配依据",
+  analysisLevel: "分析层级",
+  reviewFlags: "待复核项目",
   keywords: "关键词",
   plainExplanation: "白话说明（学习辅助）",
   pathogenesis: "病机提示（待校订）",
@@ -246,6 +248,7 @@ const detailOrder = [
   "differentiation",
   "warnings",
   "indications",
+  "symptoms",
   "symptomProfile",
   "matchBasis",
   "plainExplanation",
@@ -253,6 +256,8 @@ const detailOrder = [
   "notes",
   "content",
   "status",
+  "analysisLevel",
+  "reviewFlags",
   "standardIndex",
   "keywords"
 ];
@@ -882,7 +887,7 @@ function formulaCard(item, query = "") {
   const match = formulaMatch(item, query);
   return `
     <button class="library-card" type="button" data-kind="formula" data-id="${escapeHtml(item.id)}">
-      <div class="tag-row">${tag(item.source)}${tag(item.category)}${tag(item.volume)}${tag(item.status)}</div>
+      <div class="tag-row">${tag(item.source)}${tag(item.category)}${tag(item.volume)}${tag(item.status && item.status.length > 12 ? "待人工复核" : item.status)}</div>
       <h3>${escapeHtml(item.name)}</h3>
       <p>${escapeHtml(item.syndrome || item.pattern || item.plainExplanation || item.notes || "")}</p>
       ${match ? `<div class="match-note"><strong>资料匹配${escapeHtml(match.level)}</strong><span>${escapeHtml(match.terms.slice(0, 5).join("、"))}</span></div>` : ""}
@@ -986,7 +991,7 @@ async function openDetail(kind, id) {
 }
 
 function buildDetails(item, query = "") {
-  const hidden = new Set(["id", "name", "title", "type", "raw", "_searchText"]);
+  const hidden = new Set(["id", "name", "title", "type", "raw", "_searchText", "clauseIds"]);
   const keys = [...detailOrder, ...Object.keys(item).filter((key) => !detailOrder.includes(key))];
   const match = formulaMatch(item, query);
   const matchBlock = match ? `
