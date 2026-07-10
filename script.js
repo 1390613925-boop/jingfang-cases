@@ -1,6 +1,7 @@
 const datasets = {
   formulas: [],
   jingui: [],
+  jinguiPages: [],
   cases: []
 };
 
@@ -234,15 +235,17 @@ const detailOrder = [
 ];
 
 async function loadData() {
-  const [articleText, legacyFormulas, jingui, cases] = await Promise.all([
+  const [articleText, legacyFormulas, jingui, jinguiPages, cases] = await Promise.all([
     loadArticleCorpus(),
     fetchJson("./data/formulas.json").catch(() => []),
     fetchJson("./data/jingui-clauses.json"),
+    fetchJson("./data/jingui-pages.json").catch(() => []),
     fetchJson("./data/cases.json").catch(() => [])
   ]);
 
   datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas);
   datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略", type: "jingui" }));
+  datasets.jinguiPages = jinguiPages.map((item) => ({ ...item, book: "金匮要略", type: "jingui-page" }));
   datasets.cases = cases.map(normalizeCase);
   buildSearchIndex();
   renderFilters();
@@ -318,7 +321,7 @@ function normalizeCase(item) {
 }
 
 function buildSearchIndex() {
-  [...datasets.formulas, ...datasets.jingui, ...datasets.cases].forEach((item) => {
+  [...datasets.formulas, ...datasets.jingui, ...datasets.jinguiPages, ...datasets.cases].forEach((item) => {
     item._searchText = buildSearchText(item);
   });
 }
@@ -624,7 +627,9 @@ function renderChips(container, values, key) {
 function renderAll() {
   const query = normalizeForSearch(els.search.value.trim());
   const formulas = applyFilters(datasets.formulas, query);
-  const jingui = applyFilters(datasets.jingui, query);
+  const jinguiClauses = applyFilters(datasets.jingui, query);
+  const jinguiPages = query ? applyFilters(datasets.jinguiPages, query) : [];
+  const jingui = [...jinguiClauses, ...jinguiPages];
   const cases = applyFilters(datasets.cases, query);
 
   syncModulePanels();
@@ -778,8 +783,8 @@ function formulaCard(item) {
 function renderClauseList(container, items, book) {
   container.innerHTML = items.map((item) => `
     <button class="clause-card" type="button" data-kind="jingui" data-id="${escapeHtml(item.id)}">
-      <div class="clause-head"><strong>${escapeHtml(item.number ? `${book} ${item.number}` : book)}</strong><span>${escapeHtml(item.category)}</span></div>
-      <p>${escapeHtml(item.text)}</p>
+      <div class="clause-head"><strong>${escapeHtml(item.number ? `${book} ${item.number}` : item.page ? `${book} 第 ${item.page} 页` : book)}</strong><span>${escapeHtml(item.category)}</span></div>
+      <p>${escapeHtml(item.text || item.summary || "")}</p>
       <div class="tag-row">${(item.formulas || []).map(tag).join("")}</div>
     </button>
   `).join("");
@@ -848,7 +853,8 @@ function tag(value) {
 
 async function openDetail(kind, id) {
   const sourceKey = kind === "formula" ? "formulas" : kind === "case" ? "cases" : "jingui";
-  const item = datasets[sourceKey].find((entry) => entry.id === id);
+  const sources = kind === "jingui" ? [datasets.jingui, datasets.jinguiPages] : [datasets[sourceKey]];
+  const item = sources.flat().find((entry) => entry.id === id);
   if (!item) return;
   if (kind === "case" && !item.content) {
     els.modalCategory.textContent = "医案";
