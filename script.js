@@ -641,10 +641,14 @@ function renderAll() {
 
   els.formulaCount.textContent = formulas.length;
   els.sourceCount.textContent = new Set(datasets.formulas.map((item) => item.sourceTopic).filter(Boolean)).size;
-  els.jinguiCount.textContent = jingui.length;
+  // Keep the overview card stable; search results are reported in the module hint.
+  els.jinguiCount.textContent = datasets.jingui.length;
   els.caseCount.textContent = cases.length;
   els.formulasHint.textContent = formulas.length ? `共 ${formulas.length} 首方剂，按六经分组，点击卡片查看详情。` : "当前筛选没有方剂。";
-  els.jinguiHint.textContent = jingui.length ? `共 ${jingui.length} 条金匮要略条文。` : "当前筛选没有金匮要略条文。";
+  const jinguiTotal = jinguiView === "pdf" ? datasets.jinguiPages.length : datasets.jingui.length;
+  els.jinguiHint.textContent = jingui.length
+    ? (query ? `当前检索到 ${jingui.length} 条结果（库内共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 OCR 原文" : " 条整理条文"}）。` : `共 ${jinguiTotal}${jinguiView === "pdf" ? " 页 PDF OCR 原文" : " 条金匮要略整理条文"}。`)
+    : "当前筛选没有金匮要略内容。";
   if (els.jinguiPagesToggle) {
     els.jinguiPagesToggle.textContent = jinguiView === "pdf" ? "返回整理条文" : "查看 PDF OCR 全文";
     els.jinguiPagesToggle.classList.toggle("is-active", jinguiView === "pdf");
