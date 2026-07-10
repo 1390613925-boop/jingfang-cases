@@ -186,6 +186,42 @@ h1 {
   box-shadow: 0 0 0 4px rgba(36, 90, 78, 0.12);
 }
 
+.search-quick {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.search-quick span {
+  margin-right: 2px;
+  color: var(--red);
+  font-family: "KaiTi", "STKaiti", serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.search-quick button {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 6px 10px;
+  color: var(--green);
+  background: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+}
+
+.search-quick button:hover,
+.search-quick button:focus-visible {
+  border-color: var(--green);
+  background: #fffdf8;
+}
+
+.search-quick button[data-clear-search] {
+  color: var(--muted);
+}
+
 .content {
   padding: 32px 0 44px;
 }

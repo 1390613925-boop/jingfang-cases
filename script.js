@@ -845,6 +845,25 @@ function escapeHtml(value) {
 }
 
 document.addEventListener("click", (event) => {
+  const searchQuery = event.target.closest("[data-search-query]");
+  if (searchQuery) {
+    els.search.value = searchQuery.dataset.searchQuery;
+    window.clearTimeout(searchRenderTimer);
+    window.cancelAnimationFrame(searchRenderFrame);
+    searchRenderFrame = window.requestAnimationFrame(renderAll);
+    return;
+  }
+
+  const clearSearch = event.target.closest("[data-clear-search]");
+  if (clearSearch) {
+    els.search.value = "";
+    window.clearTimeout(searchRenderTimer);
+    window.cancelAnimationFrame(searchRenderFrame);
+    searchRenderFrame = window.requestAnimationFrame(renderAll);
+    els.search.focus();
+    return;
+  }
+
   const moduleTab = event.target.closest("[data-module-tab]");
   if (moduleTab) {
     activeModule = moduleTab.dataset.moduleTab;

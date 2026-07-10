@@ -32,7 +32,16 @@
       </div>
       <div class="search-wrap">
         <label for="siteSearch">检索方证与医案</label>
-        <input id="siteSearch" type="search" placeholder="输入方名、六经、病机、症状、关键词或医案内容">
+        <input id="siteSearch" type="search" placeholder="试试：桂枝汤、咳嗽、失眠、太阳病">
+        <div class="search-quick" aria-label="常用检索">
+          <span>常用检索</span>
+          <button type="button" data-search-query="桂枝汤">桂枝汤</button>
+          <button type="button" data-search-query="咳嗽">咳嗽</button>
+          <button type="button" data-search-query="失眠">失眠</button>
+          <button type="button" data-search-query="水肿">水肿</button>
+          <button type="button" data-search-query="太阳病">太阳病</button>
+          <button type="button" data-clear-search>清空</button>
+        </div>
       </div>
     </div>
   </header>
