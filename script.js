@@ -13,6 +13,18 @@ let activeModule = "formulas";
 const CASE_RENDER_LIMIT = 90;
 let searchRenderTimer = 0;
 let searchRenderFrame = 0;
+let casesLoaded = false;
+let casesLoading = null;
+
+const caseShardFiles = [
+  "taiyang.json",
+  "yangming.json",
+  "shaoyang.json",
+  "taiyin.json",
+  "shaoyin.json",
+  "jueyin.json",
+  "undetermined.json"
+];
 
 const formulaCategoryOrder = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "霍乱病", "差后劳复与阴阳易", "伤寒论"];
 
@@ -245,6 +257,21 @@ async function fetchText(path) {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`无法读取 ${path}`);
   return response.text();
+}
+
+async function ensureCasesLoaded() {
+  if (casesLoaded) return;
+  if (!casesLoading) {
+    casesLoading = Promise.all(caseShardFiles.map((file) => fetchJson(`./data/cases/${file}`)))
+      .then((shards) => {
+        datasets.cases = shards.flat().map(normalizeCase);
+        datasets.cases.forEach((item) => {
+          item._searchText = buildSearchText(item);
+        });
+        casesLoaded = true;
+      });
+  }
+  await casesLoading;
 }
 
 function normalizeCase(item) {
@@ -824,7 +851,12 @@ document.addEventListener("click", (event) => {
     filters.book = activeModule === "formulas" ? "伤寒论" : activeModule === "jingui" ? "金匮要略" : "倪师医案";
     filters.category = "全部";
     renderFilters();
-    renderAll();
+    if (activeModule === "cases" && !casesLoaded) {
+      els.casesHint.textContent = "正在加载医案全文，请稍候……";
+      ensureCasesLoaded().then(renderAll).catch(showDataError);
+    } else {
+      renderAll();
+    }
     return;
   }
 
@@ -858,6 +890,10 @@ document.addEventListener("keydown", (event) => {
 });
 
 loadData().catch((error) => {
+  showDataError(error);
+});
+
+function showDataError(error) {
   els.empty.hidden = false;
   els.empty.textContent = `${error.message}，请检查 data 目录下的 JSON 文件。`;
-});
+}
