@@ -11,6 +11,8 @@ const filters = {
 
 let activeModule = "formulas";
 const CASE_RENDER_LIMIT = 90;
+let searchRenderTimer = 0;
+let searchRenderFrame = 0;
 
 const formulaCategoryOrder = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "霍乱病", "差后劳复与阴阳易", "伤寒论"];
 
@@ -228,6 +230,7 @@ async function loadData() {
   datasets.formulas = mergeFormulas(parseFormulaCards(articleText), legacyFormulas);
   datasets.jingui = jingui.map((item) => ({ ...item, book: "金匮要略", type: "jingui" }));
   datasets.cases = cases.map(normalizeCase);
+  buildSearchIndex();
   renderFilters();
   renderAll();
 }
@@ -255,6 +258,12 @@ function normalizeCase(item) {
     keywords: item.keywords || [item.title, item.formula, item.pattern, item.category].filter(Boolean),
     symptoms: item.symptoms || []
   };
+}
+
+function buildSearchIndex() {
+  [...datasets.formulas, ...datasets.jingui, ...datasets.cases].forEach((item) => {
+    item._searchText = buildSearchText(item);
+  });
 }
 
 async function loadArticleCorpus() {
@@ -596,6 +605,12 @@ function applyFilters(items, query) {
 }
 
 function searchableText(item) {
+  if (item._searchText !== undefined) return item._searchText;
+  item._searchText = buildSearchText(item);
+  return item._searchText;
+}
+
+function buildSearchText(item) {
   return normalizeForSearch([
     item.title,
     item.name,
@@ -772,7 +787,7 @@ function openDetail(kind, id) {
 }
 
 function buildDetails(item) {
-  const hidden = new Set(["id", "name", "title", "type", "raw"]);
+  const hidden = new Set(["id", "name", "title", "type", "raw", "_searchText"]);
   const keys = [...detailOrder, ...Object.keys(item).filter((key) => !detailOrder.includes(key))];
   return keys
     .filter((key) => !hidden.has(key))
@@ -830,7 +845,13 @@ document.addEventListener("click", (event) => {
   if (event.target.matches("[data-close-modal]")) closeModal();
 });
 
-els.search.addEventListener("input", renderAll);
+els.search.addEventListener("input", () => {
+  window.clearTimeout(searchRenderTimer);
+  window.cancelAnimationFrame(searchRenderFrame);
+  searchRenderTimer = window.setTimeout(() => {
+    searchRenderFrame = window.requestAnimationFrame(renderAll);
+  }, 160);
+});
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !els.modal.hidden) closeModal();
