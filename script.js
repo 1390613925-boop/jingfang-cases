@@ -15,6 +15,8 @@ let searchRenderTimer = 0;
 let searchRenderFrame = 0;
 let casesLoaded = false;
 let casesLoading = null;
+const caseShardCache = new Map();
+const caseShardLoading = new Map();
 
 const caseShardFiles = [
   "taiyang.json",
@@ -272,6 +274,34 @@ async function ensureCasesLoaded() {
       });
   }
   await casesLoading;
+}
+
+function caseShardFor(item) {
+  const category = item.category || item.sixChannel || "";
+  const map = {
+    "太阳病": "taiyang.json",
+    "阳明病": "yangming.json",
+    "少阳病": "shaoyang.json",
+    "太阴病": "taiyin.json",
+    "少阴病": "shaoyin.json",
+    "厥阴病": "jueyin.json"
+  };
+  return map[category] || "undetermined.json";
+}
+
+async function ensureCaseDetailLoaded(item) {
+  if (item.content) return item;
+  const file = caseShardFor(item);
+  if (!caseShardLoading.has(file)) {
+    caseShardLoading.set(file, fetchJson(`./data/cases/${file}`).then((records) => {
+      caseShardCache.set(file, records);
+      return records;
+    }));
+  }
+  const records = caseShardCache.get(file) || await caseShardLoading.get(file);
+  const full = records.find((record) => record.id === item.id);
+  if (full) Object.assign(item, normalizeCase(full));
+  return item;
 }
 
 function normalizeCase(item) {
@@ -816,10 +846,19 @@ function tag(value) {
   return value ? `<span class="tag">${escapeHtml(String(value))}</span>` : "";
 }
 
-function openDetail(kind, id) {
+async function openDetail(kind, id) {
   const sourceKey = kind === "formula" ? "formulas" : kind === "case" ? "cases" : "jingui";
   const item = datasets[sourceKey].find((entry) => entry.id === id);
   if (!item) return;
+  if (kind === "case" && !item.content) {
+    els.modalCategory.textContent = "医案";
+    els.modalTitle.textContent = "正在加载医案全文……";
+    els.modalTags.innerHTML = "";
+    els.modalDetails.innerHTML = "<p class=\"detail-value\">正在读取对应六经资料，请稍候。</p>";
+    els.modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    await ensureCaseDetailLoaded(item);
+  }
   const title = item.name || item.title || `${item.book || ""} ${item.number || ""}`.trim();
   els.modalCategory.textContent = kind === "formula" ? "方剂" : kind === "case" ? "医案" : item.book;
   els.modalTitle.textContent = title;
@@ -866,6 +905,11 @@ document.addEventListener("click", (event) => {
     els.search.value = searchQuery.dataset.searchQuery;
     window.clearTimeout(searchRenderTimer);
     window.cancelAnimationFrame(searchRenderFrame);
+    if (activeModule === "cases" && !casesLoaded) {
+      els.casesHint.textContent = "正在加载医案全文索引，请稍候……";
+      ensureCasesLoaded().then(renderAll).catch(showDataError);
+      return;
+    }
     searchRenderFrame = window.requestAnimationFrame(renderAll);
     return;
   }
@@ -886,12 +930,7 @@ document.addEventListener("click", (event) => {
     filters.book = activeModule === "formulas" ? "伤寒论" : activeModule === "jingui" ? "金匮要略" : "倪师医案";
     filters.category = "全部";
     renderFilters();
-    if (activeModule === "cases" && !casesLoaded) {
-      els.casesHint.textContent = "正在加载医案全文，请稍候……";
-      ensureCasesLoaded().then(renderAll).catch(showDataError);
-    } else {
-      renderAll();
-    }
+    renderAll();
     return;
   }
 
@@ -905,7 +944,7 @@ document.addEventListener("click", (event) => {
 
   const card = event.target.closest("[data-kind][data-id]");
   if (card) {
-    openDetail(card.dataset.kind, card.dataset.id);
+    openDetail(card.dataset.kind, card.dataset.id).catch(showDataError);
     return;
   }
 
@@ -915,6 +954,11 @@ document.addEventListener("click", (event) => {
 els.search.addEventListener("input", () => {
   window.clearTimeout(searchRenderTimer);
   window.cancelAnimationFrame(searchRenderFrame);
+  if (activeModule === "cases" && els.search.value.trim() && !casesLoaded) {
+    els.casesHint.textContent = "正在加载医案全文索引，请稍候……";
+    ensureCasesLoaded().then(renderAll).catch(showDataError);
+    return;
+  }
   searchRenderTimer = window.setTimeout(() => {
     searchRenderFrame = window.requestAnimationFrame(renderAll);
   }, 160);
