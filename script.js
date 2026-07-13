@@ -3,7 +3,8 @@ const datasets = {
   jingui: [],
   jinguiFormulas: [],
   jinguiPages: [],
-  cases: []
+  cases: [],
+  documents: []
 };
 
 const filters = {
@@ -19,6 +20,8 @@ let searchRenderTimer = 0;
 let searchRenderFrame = 0;
 let casesLoaded = false;
 let casesLoading = null;
+let documentsLoaded = false;
+let documentsLoading = null;
 const caseShardCache = new Map();
 const caseShardLoading = new Map();
 
@@ -177,6 +180,8 @@ const els = {
   jinguiFormulasHint: document.querySelector("#jinguiFormulasHint"),
   jinguiPagesToggle: document.querySelector("[data-jingui-pages]"),
   casesHint: document.querySelector("#casesHint"),
+  docsGrid: document.querySelector("#docsGrid"),
+  docsHint: document.querySelector("#docsHint"),
   bookFilters: document.querySelector("#bookFilters"),
   categoryFilters: document.querySelector("#categoryFilters"),
   modal: document.querySelector("#detailModal"),
@@ -190,6 +195,9 @@ const labels = {
   book: "经典",
   source: "出处",
   sourceUrl: "原文链接",
+  path: "站内路径",
+  sourcePath: "原始路径",
+  bytes: "文件大小",
   date: "日期",
   category: "六经 / 篇章",
   volume: "卷次",
@@ -309,6 +317,21 @@ async function ensureCasesLoaded() {
       });
   }
   await casesLoading;
+}
+
+async function ensureDocumentsLoaded() {
+  if (documentsLoaded) return;
+  if (!documentsLoading) {
+    documentsLoading = fetchJson("./data/nihaixia-index.json")
+      .then((records) => {
+        datasets.documents = records.map((item) => ({ ...item, book: "倪师资料", type: "document" }));
+        datasets.documents.forEach((item) => {
+          item._searchText = buildSearchText(item);
+        });
+        documentsLoaded = true;
+      });
+  }
+  await documentsLoading;
 }
 
 function caseShardFor(item) {
@@ -662,8 +685,8 @@ function buildKeywords(item) {
 }
 
 function renderFilters() {
-  renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略", "倪师医案"], "book");
-  const source = activeModule === "formulas" ? datasets.formulas : activeModule === "jingui-formulas" ? datasets.jinguiFormulas : activeModule === "jingui-clauses" ? datasets.jingui : datasets.cases;
+  renderChips(els.bookFilters, ["全部", "伤寒论", "金匮要略", "倪师医案", "倪师资料"], "book");
+  const source = activeModule === "formulas" ? datasets.formulas : activeModule === "jingui-formulas" ? datasets.jinguiFormulas : activeModule === "jingui-clauses" ? datasets.jingui : activeModule === "nihaixia-docs" ? datasets.documents : datasets.cases;
   const ordered = ["太阳病", "阳明病", "少阳病", "太阴病", "少阴病", "厥阴病", "未定六经"];
   const rest = [...new Set(source.map((item) => item.category).filter(Boolean))]
     .filter((item) => !ordered.includes(item))
@@ -684,12 +707,14 @@ function renderAll() {
   const jinguiPages = (jinguiView === "pdf" || query) ? applyFilters(datasets.jinguiPages, query) : [];
   const jingui = jinguiView === "pdf" ? jinguiPages : [...jinguiClauses, ...jinguiPages];
   const cases = applyFilters(datasets.cases, query);
+  const documents = applyFilters(datasets.documents, query);
 
   syncModulePanels();
   if (activeModule === "formulas") renderFormulaCards(formulas, query);
   if (activeModule === "jingui-clauses") renderClauseList(els.jinguiGrid, jingui, "金匮要略");
   if (activeModule === "jingui-formulas") renderFormulaCardsInto(els.jinguiFormulasGrid, jinguiFormulas, query);
   if (activeModule === "cases") renderCaseCards(cases, query);
+  if (activeModule === "nihaixia-docs") renderDocumentCards(documents, query);
 
   els.formulaCount.textContent = formulas.length;
   els.sourceCount.textContent = new Set(datasets.formulas.map((item) => item.sourceTopic).filter(Boolean)).size;
@@ -709,7 +734,10 @@ function renderAll() {
     ? `当前检索到 ${jinguiFormulas.length} 首金匮方剂。`
     : `共 ${jinguiFormulas.length} 首金匮方剂，点击卡片查看关联条文。`;
   els.casesHint.textContent = caseHintText(cases, query);
-  const activeCount = activeModule === "formulas" ? formulas.length : activeModule === "jingui-clauses" ? jingui.length : activeModule === "jingui-formulas" ? jinguiFormulas.length : cases.length;
+  els.docsHint.textContent = documentsLoaded
+    ? (query ? `当前检索到 ${documents.length} 份资料。` : `共 ${documents.length} 份资料，点击卡片查看全文。`)
+    : "资料索引尚未加载，进入本板块后自动读取。";
+  const activeCount = activeModule === "formulas" ? formulas.length : activeModule === "jingui-clauses" ? jingui.length : activeModule === "jingui-formulas" ? jinguiFormulas.length : activeModule === "nihaixia-docs" ? documents.length : cases.length;
   els.empty.hidden = activeCount > 0;
 }
 
@@ -930,6 +958,37 @@ function renderCaseCards(items, query) {
   `;
 }
 
+function renderDocumentCards(items, query) {
+  const groups = groupByCategory(items);
+  els.docsGrid.innerHTML = groups.map(([category, documents]) => `
+    <section class="formula-group" aria-labelledby="doc-group-${makeId(category)}">
+      <div class="formula-group-head">
+        <h3 id="doc-group-${makeId(category)}">${escapeHtml(category)}</h3>
+        <span>${documents.length} 份</span>
+      </div>
+      <div class="formula-group-grid">
+        ${documents.map((item) => documentCard(item, query)).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+function documentCard(item, query) {
+  const preview = cleanDocumentPreview(item.content);
+  return `
+    <button class="library-card document-card" type="button" data-kind="document" data-id="${escapeHtml(item.id)}">
+      <div class="tag-row">${tag(item.category)}${tag(item.sourcePath)}</div>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(preview)}</p>
+      <div class="card-footer"><span>${escapeHtml(item.bytes ? `${Math.round(item.bytes / 1024)} KB` : "资料全文")}</span><span>打开全文</span></div>
+    </button>
+  `;
+}
+
+function cleanDocumentPreview(content) {
+  return String(content || "").replace(/^---[\s\S]*?---/, "").replace(/^#+\s*/gm, "").replace(/\s+/g, " ").trim().slice(0, 180);
+}
+
 function shouldLimitCases(query) {
   return !query && filters.category === "全部";
 }
@@ -969,7 +1028,7 @@ function tag(value) {
 
 async function openDetail(kind, id) {
   const sourceKey = kind === "formula" ? "formulas" : kind === "case" ? "cases" : "jingui";
-  const sources = kind === "formula" ? [datasets.formulas, datasets.jinguiFormulas] : kind === "jingui" ? [datasets.jingui, datasets.jinguiPages] : [datasets[sourceKey]];
+  const sources = kind === "formula" ? [datasets.formulas, datasets.jinguiFormulas] : kind === "jingui" ? [datasets.jingui, datasets.jinguiPages] : kind === "document" ? [datasets.documents] : [datasets[sourceKey]];
   const item = sources.flat().find((entry) => entry.id === id);
   if (!item) return;
   if (kind === "case" && !item.content) {
@@ -982,15 +1041,15 @@ async function openDetail(kind, id) {
     await ensureCaseDetailLoaded(item);
   }
   const title = item.name || item.title || `${item.book || ""} ${item.number || ""}`.trim();
-  els.modalCategory.textContent = kind === "formula" ? "方剂" : kind === "case" ? "医案" : item.book;
+  els.modalCategory.textContent = kind === "formula" ? "方剂" : kind === "case" ? "医案" : kind === "document" ? item.category : item.book;
   els.modalTitle.textContent = title;
   els.modalTags.innerHTML = [item.source, item.book, item.category, item.volume, ...(item.keywords || [])].filter(Boolean).map(tag).join("");
-  els.modalDetails.innerHTML = buildDetails(item, normalizeForSearch(els.search.value.trim()));
+  els.modalDetails.innerHTML = buildDetails(item, normalizeForSearch(els.search.value.trim()), kind);
   els.modal.hidden = false;
   document.body.style.overflow = "hidden";
 }
 
-function buildDetails(item, query = "") {
+function buildDetails(item, query = "", kind = "") {
   const hidden = new Set(["id", "name", "title", "type", "raw", "_searchText", "clauseIds"]);
   const keys = [...detailOrder, ...Object.keys(item).filter((key) => !detailOrder.includes(key))];
   const match = formulaMatch(item, query);
@@ -1005,7 +1064,7 @@ function buildDetails(item, query = "") {
     .filter((key) => hasValue(item[key]))
     .map((key) => `
       <div class="detail-item">
-        <div class="detail-label">${escapeHtml(labels[key] || key)}</div>
+        <div class="detail-label">${escapeHtml(kind === "document" && key === "content" ? "资料全文" : labels[key] || key)}</div>
         <p class="detail-value">${escapeHtml(formatList(item[key]))}</p>
       </div>
     `).join("");
@@ -1039,6 +1098,11 @@ document.addEventListener("click", (event) => {
       ensureCasesLoaded().then(renderAll).catch(showDataError);
       return;
     }
+    if (activeModule === "nihaixia-docs" && !documentsLoaded) {
+      els.docsHint.textContent = "正在加载倪师资料全文索引，请稍候……";
+      ensureDocumentsLoaded().then(renderAll).catch(showDataError);
+      return;
+    }
     searchRenderFrame = window.requestAnimationFrame(renderAll);
     return;
   }
@@ -1062,9 +1126,14 @@ document.addEventListener("click", (event) => {
   const moduleTab = event.target.closest("[data-module-tab]");
   if (moduleTab) {
     activeModule = moduleTab.dataset.moduleTab;
-    filters.book = activeModule === "formulas" ? "伤寒论" : activeModule === "jingui-clauses" || activeModule === "jingui-formulas" ? "金匮要略" : "倪师医案";
+    filters.book = activeModule === "formulas" ? "伤寒论" : activeModule === "jingui-clauses" || activeModule === "jingui-formulas" ? "金匮要略" : activeModule === "nihaixia-docs" ? "倪师资料" : "倪师医案";
     filters.category = "全部";
     renderFilters();
+    if (activeModule === "nihaixia-docs" && !documentsLoaded) {
+      els.docsHint.textContent = "正在加载 30 份倪师资料，请稍候……";
+      ensureDocumentsLoaded().then(renderAll).catch(showDataError);
+      return;
+    }
     renderAll();
     return;
   }
@@ -1092,6 +1161,11 @@ els.search.addEventListener("input", () => {
   if (activeModule === "cases" && els.search.value.trim() && !casesLoaded) {
     els.casesHint.textContent = "正在加载医案全文索引，请稍候……";
     ensureCasesLoaded().then(renderAll).catch(showDataError);
+    return;
+  }
+  if (activeModule === "nihaixia-docs" && !documentsLoaded) {
+    els.docsHint.textContent = "正在加载倪师资料全文索引，请稍候……";
+    ensureDocumentsLoaded().then(renderAll).catch(showDataError);
     return;
   }
   searchRenderTimer = window.setTimeout(() => {

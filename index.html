@@ -86,6 +86,10 @@
         <strong>倪师医案</strong>
         <span>按六经辨证与关键词检索</span>
       </button>
+      <button class="module-tab" type="button" data-module-tab="nihaixia-docs">
+        <strong>倪师资料全文</strong>
+        <span>讲义、研究资料与原始文档</span>
+      </button>
     </section>
 
     <section class="filters" aria-label="资料筛选">
@@ -132,6 +136,14 @@
         <p id="casesHint">全文入库，支持按病名、症状、方名、关键词检索。</p>
       </div>
       <div id="casesGrid" class="card-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="library-section" data-module-panel="nihaixia-docs" aria-labelledby="docsTitle" hidden>
+      <div class="section-head">
+        <h2 id="docsTitle">倪师资料全文</h2>
+        <p id="docsHint">正在准备资料索引，首次进入时加载。</p>
+      </div>
+      <div id="docsGrid" class="card-grid" aria-live="polite"></div>
     </section>
 
     <p id="emptyState" class="empty-state" hidden>没有找到匹配内容，请换个关键词或分类试试。</p>
